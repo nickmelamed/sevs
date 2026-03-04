@@ -1,0 +1,1 @@
+perturbations: [hflip, gaussian_blur, brightness, contrast, jpeg_compress, random_crop]

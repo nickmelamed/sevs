@@ -1,0 +1,18 @@
+# This file documents the meaning of fields in configs/eval/*.yaml
+run:
+  name: "Unique run name used in results path"
+dataset:
+  subset_manifest: "Path to a JSON manifest listing images used for evaluation"
+detector:
+  family: "Detector backend; 'mock' for starter; implement real wrappers"
+uncertainty:
+  methods: "Enable temperature scaling / mc-dropout / test-time augmentation"
+probes:
+  perturbations: "List of perturbations to probe consistency"
+meta_error_predictor:
+  features: "Feature names computed per detection for error prediction"
+evaluation:
+  calibration: "ECE/Brier of confidence-like scores"
+  error_detection: "AUROC of predicting incorrect detections"
+reporting:
+  outputs: "Files written to the run directory"

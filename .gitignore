@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+data/external/
+data/processed/
+results/runs/
+reports/figures/
+*.pt
+*.pth
+*.onnx
+.ipynb_checkpoints/

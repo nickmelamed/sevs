@@ -1,0 +1,2 @@
+num_samples: 8
+augmentations: [hflip, scale_0.9, scale_1.1, brightness_0.8, brightness_1.2]
