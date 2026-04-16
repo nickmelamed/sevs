@@ -10,5 +10,5 @@ reports/figures/
 *.pth
 *.onnx
 .ipynb_checkpoints/
-sevs
+/sevs/
 *.egg-info/
