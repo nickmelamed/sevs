@@ -1,24 +1,25 @@
 run:
-  name: "sevs_mock_smoketest"
+  name: "sevs_coco_torchvision"
   seed: 42
   device:
-    backend: "cpu"
+    backend: "mps"
     num_workers: 4
   output_dir: "results/runs/${run.name}"
 
 dataset:
-  name: "mock"
-  split: "val"
-  max_items: 12
-  subset_manifest: null
+  name: "coco"
+  split: "val2017"
+  subset_manifest: "data/splits/coco_val_small.json"
+  root: "data/external/coco"
   image_size: 640
   class_filter: null
+  max_items: 200
 
 detector:
-  family: "mock"
-  variant: "tiny"
-  weights: "pretrained"
-  conf_threshold: 0.001
+  family: "torchvision"
+  variant: "ssdlite320_mobilenet_v3_large"
+  weights: "DEFAULT"
+  conf_threshold: 0.05
   nms_iou_threshold: 0.6
   max_detections_per_image: 300
 
@@ -30,18 +31,10 @@ ground_truth:
 uncertainty:
   enabled: true
   methods:
-    - name: "temperature_scaling"
-      enabled: false
-      calibration_split: "val"
-      optimize_metric: "nll"
-    - name: "mc_dropout"
-      enabled: false
-      num_samples: 15
-      dropout_p: 0.1
     - name: "tta"
       enabled: true
-      num_samples: 8
-      augmentations: ["hflip", "scale_0.9", "scale_1.1", "brightness_0.8", "brightness_1.2"]
+      num_samples: 5
+      augmentations: ["hflip", "brightness_0.8", "brightness_1.2", "contrast_1.2"]
 
 probes:
   enabled: true
@@ -56,8 +49,6 @@ probes:
       severity: 2
     - name: "jpeg_compress"
       severity: 2
-    - name: "random_crop"
-      severity: 1
   matching:
     iou_match_threshold: 0.5
     class_match_required: true
@@ -96,7 +87,7 @@ meta_error_predictor:
 
 evaluation:
   detection:
-    enabled: false
+    enabled: true
     metrics: ["mAP50", "mAP50_95"]
   calibration:
     enabled: true
