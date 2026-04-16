@@ -32,4 +32,4 @@ def roc_auc(y_true: np.ndarray, y_score: np.ndarray) -> float:
     tpr = tps / pos
     fpr = fps / neg
     # trapezoidal
-    return float(np.trapz(tpr, fpr))
+    return float(np.trapezoid(tpr, fpr))
