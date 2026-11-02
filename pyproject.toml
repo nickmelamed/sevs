@@ -24,7 +24,7 @@ dependencies = [
 
 [project.optional-dependencies]
 yolo = ["ultralytics"]
-dev = ["pytest", "hypothesis", "ruff", "mypy", "types-PyYAML", "pandas-stubs"]
+dev = ["pytest", "hypothesis", "mutmut", "ruff", "mypy", "types-PyYAML", "pandas-stubs"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
@@ -44,3 +44,8 @@ ignore_missing_imports = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = ["slow: tests that take more than a few seconds"]
+
+[tool.mutmut]
+source_paths = ["src/sevs/utils/", "src/sevs/evaluation/"]
+pytest_add_cli_args_test_selection = ["tests/"]
+also_copy = ["src/", "configs/"]
