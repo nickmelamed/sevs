@@ -211,3 +211,16 @@ def test_meta_model_returns_probability_of_incorrect():
 def test_meta_model_unknown_family_raises():
     with pytest.raises(NotImplementedError):
         build_meta_model({"model": {"family": "mlp"}}, [])
+
+
+def test_meta_model_predictions_do_not_depend_on_feature_units():
+    rng = np.random.default_rng(0)
+    y = rng.integers(0, 2, 300)
+    x = np.column_stack([y + rng.normal(0, 0.7, 300), rng.normal(0, 1, 300) + 0.5 * y])
+    cfg = {"model": {"family": "logistic_regression", "params": {"C": 0.05, "max_iter": 200}}}
+    a = build_meta_model(cfg, ["f1", "f2"])
+    a.fit(x, y)
+    rescaled = x * np.array([1.0, 1000.0])
+    b = build_meta_model(cfg, ["f1", "f2"])
+    b.fit(rescaled, y)
+    assert a.predict_proba(x) == pytest.approx(b.predict_proba(rescaled), abs=1e-6)

@@ -20,10 +20,10 @@ their reasons are in docs/DECISIONS.md.
 3. Output from the mock detector or mock dataset never goes into a results
    table, README, or paper number as a real result.
 4. mAP, ECE, Brier, and AUROC must match their standard definitions. Do not
-   swap or redefine a metric silently, and do not call the native VOC-style
-   AP "COCO mAP".
-5. A config key that the code reads must do what its name says. Do not leave
-   a key in a config that nothing implements without saying so.
+   swap or redefine a metric silently. mAP follows COCOeval, and
+   `tests/test_coco_parity.py` checks it against pycocotools.
+5. A config key must do what its name says. Keys live in
+   `utils/config_schema.py`, and the loader rejects the rest.
 6. Never weaken a test, lint rule, or check to make it pass.
 7. Ask before changing anything in `.claude/protected-paths`, the evaluation
    design, dependencies, CI, or hooks.

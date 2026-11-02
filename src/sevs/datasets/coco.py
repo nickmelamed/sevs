@@ -1,28 +1,28 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any
 
 import numpy as np
-from PIL import Image
 from torchvision.datasets import CocoDetection
 
-from .common import Sample, _load_manifest, limit_indices
+from .common import Sample, _load_manifest
 from .registry import register
 
 
 @register("coco")
 @dataclass
 class CocoDataset:
-    cfg: Dict[str, Any]
+    cfg: dict[str, Any]
 
     def __post_init__(self) -> None:
         manifest = _load_manifest(self.cfg.get("subset_manifest"))
         self.manifest = manifest or {}
         self.coco_root = Path(
-            self.manifest.get("coco_root")
-            or self.cfg.get("root")
+            self.cfg.get("root")
+            or self.manifest.get("coco_root")
             or "data/external/coco"
         )
         split = self.manifest.get("split") or self.cfg.get("split") or "val2017"
@@ -35,7 +35,7 @@ class CocoDataset:
 
         self.dataset = CocoDetection(root=str(img_root), annFile=str(ann_file))
         self.selected_filenames = set(self.manifest.get("images", [])) if self.manifest.get("images") else None
-        self.indices: List[int] = []
+        self.indices: list[int] = []
         for i in range(len(self.dataset)):
             image_id = self.dataset.ids[i]
             img_info = self.dataset.coco.loadImgs([image_id])[0]
@@ -57,13 +57,17 @@ class CocoDataset:
             image_id = self.dataset.ids[idx]
             img_info = self.dataset.coco.loadImgs([image_id])[0]
             image_np = np.array(image.convert("RGB"))
-            boxes: List[List[float]] = []
-            labels: List[int] = []
+            boxes: list[list[float]] = []
+            labels: list[int] = []
+            crowd_boxes: list[list[float]] = []
+            crowd_labels: list[int] = []
             for ann in anns:
-                if ann.get("iscrowd", 0):
-                    continue
                 x, y, w, h = ann["bbox"]
                 if w <= 0 or h <= 0:
+                    continue
+                if ann.get("iscrowd", 0):
+                    crowd_boxes.append([x, y, x + w, y + h])
+                    crowd_labels.append(int(ann["category_id"]))
                     continue
                 boxes.append([x, y, x + w, y + h])
                 labels.append(int(ann["category_id"]))
@@ -72,6 +76,12 @@ class CocoDataset:
                 image_id=str(image_id),
                 gt_boxes_xyxy=np.array(boxes, dtype=float) if boxes else np.zeros((0, 4), dtype=float),
                 gt_labels=np.array(labels, dtype=int) if labels else np.zeros((0,), dtype=int),
-                meta={"file_name": img_info.get("file_name"), "height": img_info.get("height"), "width": img_info.get("width")},
+                meta={
+                    "file_name": img_info.get("file_name"),
+                    "height": img_info.get("height"),
+                    "width": img_info.get("width"),
+                    "crowd_boxes_xyxy": np.array(crowd_boxes, dtype=float).reshape(-1, 4),
+                    "crowd_labels": np.array(crowd_labels, dtype=int),
+                },
             )
 

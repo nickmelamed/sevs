@@ -21,6 +21,10 @@ jobs:
         run: python3 scripts/agent/check_style.py --changed .
       - name: Test weakening (reported, approved in review)
         run: python3 scripts/agent/check_tests.py --warn
-      # Enable once the Makefile's tools are set up for this repo.
-      # - name: Project checks
-      #   run: make setup && make ci
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+          pip install -e ".[dev]"
+      - name: Project checks
+        run: make ci

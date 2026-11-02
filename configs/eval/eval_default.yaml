@@ -3,7 +3,6 @@ run:
   seed: 42
   device:
     backend: "cpu"
-    num_workers: 4
   output_dir: "results/runs/${run.name}"
 
 dataset:
@@ -11,7 +10,6 @@ dataset:
   split: "val"
   max_items: 12
   subset_manifest: null
-  image_size: 640
   class_filter: null
 
 detector:
@@ -30,14 +28,6 @@ ground_truth:
 uncertainty:
   enabled: true
   methods:
-    - name: "temperature_scaling"
-      enabled: false
-      calibration_split: "val"
-      optimize_metric: "nll"
-    - name: "mc_dropout"
-      enabled: false
-      num_samples: 15
-      dropout_p: 0.1
     - name: "tta"
       enabled: true
       num_samples: 8
@@ -62,16 +52,8 @@ probes:
     iou_match_threshold: 0.5
     class_match_required: true
 
-consistency_metrics:
-  enabled: true
-  metrics: ["iou_stability", "center_jitter", "size_jitter", "class_churn_rate", "confidence_variance"]
-
 meta_error_predictor:
   enabled: true
-  target_definition:
-    incorrect_if_unmatched: true
-    incorrect_if_class_mismatch: true
-    iou_threshold: 0.5
   features:
     - "confidence"
     - "box_area"
@@ -92,7 +74,6 @@ meta_error_predictor:
     train_ratio: 0.7
     val_ratio: 0.15
     test_ratio: 0.15
-    stratify_by: "is_incorrect"
 
 evaluation:
   detection:
@@ -108,7 +89,6 @@ evaluation:
   abstention:
     enabled: true
     thresholds: [0.1, 0.2, 0.3, 0.4, 0.5]
-    report_tradeoff: ["coverage", "risk"]
   ood:
     enabled: true
     scoring: ["max_softmax_prob", "entropy", "energy"]
@@ -119,6 +99,3 @@ reporting:
     - "results_table.csv"
     - "reliability_diagram.png"
     - "roc_error_detection.png"
-    - "ablation_table.md"
-  save_top_k_failures: 10
-  save_visualizations: true

@@ -1,15 +1,14 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any, Dict, Iterator, List
+from typing import Any
 
 import numpy as np
 from torchvision.datasets import VOCDetection
 
 from .common import Sample
 from .registry import register
-
 
 VOC_NAME_TO_ID = {
     "aeroplane": 1,
@@ -38,7 +37,7 @@ VOC_NAME_TO_ID = {
 @register("voc")
 @dataclass
 class VocDataset:
-    cfg: Dict[str, Any]
+    cfg: dict[str, Any]
 
     def __post_init__(self) -> None:
         root = self.cfg.get("root") or "data/external/voc"
@@ -61,8 +60,8 @@ class VocDataset:
             objects = ann.get("object", [])
             if isinstance(objects, dict):
                 objects = [objects]
-            boxes: List[List[float]] = []
-            labels: List[int] = []
+            boxes: list[list[float]] = []
+            labels: list[int] = []
             for obj in objects:
                 name = obj["name"].lower().strip()
                 if name not in VOC_NAME_TO_ID:

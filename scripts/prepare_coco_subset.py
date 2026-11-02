@@ -23,7 +23,7 @@ def main():
     random.Random(args.seed).shuffle(imgs)
     imgs = imgs[: args.n]
 
-    manifest = {"images": imgs, "coco_root": str(Path(args.coco_root).resolve()), "split": args.split}
+    manifest = {"images": imgs, "coco_root": args.coco_root, "split": args.split}
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     Path(args.out).write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     print(f"Wrote {args.out} with {len(imgs)} images")

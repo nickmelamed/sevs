@@ -1,19 +1,20 @@
 from __future__ import annotations
+
 import os
 import re
-from dataclasses import dataclass
-from typing import Any, Dict
+from typing import Any
+
 import yaml
 
 _VAR = re.compile(r"\$\{([^}]+)\}")
 
-def _get_by_path(d: Dict[str, Any], path: str) -> Any:
+def _get_by_path(d: dict[str, Any], path: str) -> Any:
     cur: Any = d
     for p in path.split("."):
         cur = cur[p]
     return cur
 
-def interpolate(obj: Any, root: Dict[str, Any]) -> Any:
+def interpolate(obj: Any, root: dict[str, Any]) -> Any:
     if isinstance(obj, str):
         def repl(m):
             return str(_get_by_path(root, m.group(1)))
@@ -24,8 +25,8 @@ def interpolate(obj: Any, root: Dict[str, Any]) -> Any:
         return [interpolate(v, root) for v in obj]
     return obj
 
-def load_yaml(path: str) -> Dict[str, Any]:
-    with open(path, "r", encoding="utf-8") as f:
+def load_yaml(path: str) -> dict[str, Any]:
+    with open(path, encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
     # interpolate after load
     cfg2 = interpolate(cfg, cfg)

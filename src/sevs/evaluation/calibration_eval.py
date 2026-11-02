@@ -1,8 +1,11 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Dict
+
 import numpy as np
-from sevs.utils.metrics import expected_calibration_error, brier_score
+
+from sevs.utils.metrics import brier_score, expected_calibration_error
+
 
 @dataclass
 class CalibrationResults:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 import torch
@@ -16,7 +16,7 @@ class Detection:
 
 
 class BaseDetector:
-    def predict(self, image: np.ndarray) -> List[Detection]:
+    def predict(self, image: np.ndarray) -> list[Detection]:
         raise NotImplementedError
 
 
@@ -24,10 +24,10 @@ class MockDetector(BaseDetector):
     def __init__(self, seed: int = 42):
         self.rng = np.random.default_rng(seed)
 
-    def predict(self, image: np.ndarray) -> List[Detection]:
+    def predict(self, image: np.ndarray) -> list[Detection]:
         H, W = image.shape[:2]
         n = int(self.rng.integers(1, 6))
-        dets: List[Detection] = []
+        dets: list[Detection] = []
         for _ in range(n):
             x1 = float(self.rng.uniform(0, W * 0.7))
             y1 = float(self.rng.uniform(0, H * 0.7))
@@ -42,12 +42,12 @@ class MockDetector(BaseDetector):
 class TorchvisionDetector(BaseDetector):
     def __init__(self, variant: str = "fasterrcnn_resnet50_fpn_v2", weights: str = "DEFAULT", device: str = "cpu", score_threshold: float = 0.05):
         from torchvision.models.detection import (
-            fasterrcnn_resnet50_fpn_v2,
-            retinanet_resnet50_fpn_v2,
-            ssdlite320_mobilenet_v3_large,
             FasterRCNN_ResNet50_FPN_V2_Weights,
             RetinaNet_ResNet50_FPN_V2_Weights,
             SSDLite320_MobileNet_V3_Large_Weights,
+            fasterrcnn_resnet50_fpn_v2,
+            retinanet_resnet50_fpn_v2,
+            ssdlite320_mobilenet_v3_large,
         )
 
         self.device = torch.device(device)
@@ -69,14 +69,14 @@ class TorchvisionDetector(BaseDetector):
         self.model.eval()
 
     @torch.inference_mode()
-    def predict(self, image: np.ndarray) -> List[Detection]:
+    def predict(self, image: np.ndarray) -> list[Detection]:
         x = torch.from_numpy(image).permute(2, 0, 1).float() / 255.0
         x = x.to(self.device)
         out = self.model([x])[0]
         boxes = out["boxes"].detach().cpu().numpy()
         labels = out["labels"].detach().cpu().numpy()
         scores = out["scores"].detach().cpu().numpy()
-        dets: List[Detection] = []
+        dets: list[Detection] = []
         for box, label, score in zip(boxes, labels, scores):
             if float(score) < self.score_threshold:
                 continue
@@ -94,9 +94,9 @@ class UltralyticsYOLODetector(BaseDetector):
         self.conf_threshold = conf_threshold
         self.device = device
 
-    def predict(self, image: np.ndarray) -> List[Detection]:
+    def predict(self, image: np.ndarray) -> list[Detection]:
         results = self.model.predict(source=image, conf=self.conf_threshold, device=self.device, verbose=False)
-        dets: List[Detection] = []
+        dets: list[Detection] = []
         if not results:
             return dets
         boxes = results[0].boxes
@@ -120,7 +120,7 @@ def _resolve_device(device: str | None = None) -> str:
     return "cpu"
 
 
-def build_detector(cfg: Dict[str, Any], seed: int = 42, device: str | None = None) -> BaseDetector:
+def build_detector(cfg: dict[str, Any], seed: int = 42, device: str | None = None) -> BaseDetector:
     family = cfg.get("family", "mock")
     resolved = _resolve_device(device or cfg.get("device"))
     if family == "mock":

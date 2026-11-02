@@ -18,21 +18,21 @@ These make a reported result wrong or dishonest if violated. [confirmed] unless 
 
 ## 3. Pipeline (what the code does)
 
-Entry point: `python -m sevs.cli {smoke-test,run} --config <yaml>` (`src/sevs/cli.py`, `run_pipeline`). [inferred]
+Entry point: `python -m sevs.cli {smoke-test,run} --config <yaml>` (`src/sevs/cli.py`, `run_pipeline`). `smoke-test` forces the mock detector and dataset and writes to a `*_smoke` directory. `run` refuses a config that uses either. `run_pipeline` rejects unknown config keys and unusable values. A row is labeled `is_mock` when the config is mock or when samples or a detector were passed in directly. [inferred]
 
 For each image:
-1. The detector predicts boxes, classes, and confidences.
+1. The detector predicts boxes, classes, and confidences. Predictions are filtered by `conf_threshold` and `dataset.class_filter`, passed through class-wise NMS at `nms_iou_threshold`, and capped at `max_detections_per_image`.
 2. Each configured perturbation (hflip, gaussian_blur, brightness, contrast, jpeg_compress, random_crop) is applied and the detector re-run. Boxes from geometric perturbations are mapped back to the original frame.
-3. If TTA is enabled, up to `num_samples` augmented images are generated and the detector re-run.
-4. Each reference detection is labeled correct or incorrect against ground truth at `match_iou_threshold` with class match required.
+3. If TTA is enabled, up to `num_samples` augmented views are generated, the detector is re-run, and boxes are mapped back to the original frame.
+4. Detections are labeled correct or incorrect against ground truth at `match_iou_threshold` with class match required. Detections are visited in confidence order and each ground-truth box is used once. An unmatched detection on a crowd region of its class is left out of the labels, as mAP ignores it.
 5. Each detection gets a feature vector: confidence, box area, aspect ratio, entropy of the confidence, TTA confidence std, and five consistency features.
 
 After all images:
-- Calibration: ECE and Brier of raw confidence versus correctness, plus a reliability diagram.
-- Meta-error: logistic regression on the features, predicting incorrectness, scored by AUROC on a held-out part.
-- Detection mAP@0.50 and mAP@0.50:0.95 (only if `evaluation.detection.enabled`).
+- Calibration: ECE and Brier of raw confidence versus correctness, plus a reliability diagram. Nothing is fitted, so there is no calibration split.
+- Meta-error: images are split into train, val, and test with the configured ratios. A standardized logistic regression is fitted on the train images and scored by AUROC and AUPRC on the test images (headline) and the val images. Abstention coverage and risk are computed on the test images.
+- Detection mAP@0.50 and mAP@0.50:0.95 in the style of COCOeval (only if `evaluation.detection.enabled`).
 - OOD: mean image-level score per method (only if `evaluation.ood.enabled`).
-- One-row `results_table.csv` and the reliability PNG are written to `run.output_dir`.
+- The files listed in `reporting.outputs` are written to `run.output_dir`. Every results row has `is_mock`.
 
 ## 4. Components
 
@@ -41,11 +41,15 @@ After all images:
 | `models/detector.py` | `Detection` dataclass, `MockDetector`, `TorchvisionDetector`, an Ultralytics wrapper, `build_detector`. |
 | `datasets/` | COCO and VOC adapters via torchvision, a registry, and subset manifests (`data/splits/*.json`). |
 | `probes/perturbations.py` | Six perturbations, each returning the image and a box-inverse function. |
-| `probes/tta.py` | Builds TTA images from augmentation names. |
+| `probes/tta.py` | Builds TTA views from augmentation names, each with a box mapping back to the original frame. |
+| `models/postprocess.py` | Confidence and class filter, class-wise NMS, and top-k cap, applied to every detector. |
+| `utils/config_schema.py` | The allowed config keys. Unknown keys raise `ValueError`. |
+| `utils/splits.py` | Disjoint train, val, and test split of image ids. |
 | `probes/consistency.py` | `iou_stability`, `center_jitter`, `size_jitter`, `class_churn_rate`, `confidence_variance` per reference detection. With no matched probe box: IoU 0, churn 1, all else 0. |
 | `models/uncertainty.py` | Binary entropy of confidence, and std of TTA confidences. |
-| `models/meta_error.py` | Logistic regression returning P(incorrect). Other families raise `NotImplementedError`. |
-| `evaluation/detection_eval.py` | Native VOC-style all-point AP, averaged over classes and IoU thresholds. |
+| `models/meta_error.py` | Standardized logistic regression returning P(incorrect), fitted and scored by image split. Other families raise `NotImplementedError`. |
+| `evaluation/detection_eval.py` | COCOeval-style AP: 101-point interpolation, crowd regions ignored, top 100 detections per class and image. Checked against pycocotools. |
+| `evaluation/error_eval.py` | AUROC, AUPRC, and the abstention coverage and risk table. |
 | `evaluation/calibration_eval.py`, `utils/metrics.py` | Equal-width-bin ECE, Brier, and rank-based AUROC with ties counted as half. |
 | `evaluation/ood_eval.py` | Per-detection OOD scores, reduced to one score per image (max by default). |
 
@@ -58,20 +62,23 @@ The project reports, or plans to report [confirmed]:
 - Error prediction (AUROC and AUPRC of the meta-model, abstention coverage versus risk).
 - OOD detection (max softmax, entropy, energy).
 
-Only mAP, ECE, Brier, error AUROC, and mean OOD score are computed today. AUPRC, abstention curves, and OOD AUROC are in the config or paper outline but have no code. [inferred]
+mAP, ECE, Brier, error AUROC and AUPRC, abstention coverage and risk, and mean OOD score are computed. OOD AUROC is in the paper outline but has no code, because no labeled out-of-distribution data is wired in. [inferred]
 
 ## 6. Known gaps between intent and code
 
-Found while reading the code. Items 1, 7, and 8 are fixed on the branch `chore/agent-standards`. The rest are open.
+Items 1 to 8 are fixed. Items 9 to 11 are open.
 
-1. [gap, fixed] CLI does not import. `cli.py` imports `area` and `match_detection_to_ground_truth` from `utils/geometry.py`. Neither existed, so every command failed. Both were lost in an unfinished refactor [confirmed]. Assumed behavior: `area(box)` returns the box area, and `match_detection_to_ground_truth(box, cls, gt_boxes, gt_labels, iou_threshold, require_class_match)` returns `(matched, best_iou, gt_index)`, as `cli.py` unpacks it. Detections are matched independently, so two can claim the same ground-truth box.
-2. [gap] Leakage risk (rule 1). The meta-model split is by detection, not by image, so detections from one image can sit in both train and test. The keys `val_ratio` and `test_ratio` are read from nothing. Only `train_ratio` is used, giving a two-way split.
-3. [gap] Reproducibility (rule 2). `seed_everything` seeds `random`, NumPy, and `PYTHONHASHSEED`, not PyTorch.
-4. [gap] Mock labeling (rule 3). The results row has no field saying the detector or dataset was a mock. The mock dataset has empty ground truth, so every detection is incorrect and meta-error AUROC is NaN.
-5. [gap] mAP is not COCOeval. `detection_eval.py` uses VOC all-point AP and ignores crowd flags (`ground_truth.ignore_crowd` is not read). Its numbers will not match pycocotools and should not be presented as COCO mAP.
-6. [gap] Config keys that do nothing. `temperature_scaling`, `mc_dropout`, `abstention`, AUPRC, `roc_error_detection.png`, `ablation_table.md`, `save_top_k_failures`, and the `smoke-test` versus `run` distinction (both run the same code).
-7. [gap, fixed] TTA augmentation mapping. Names like `scale_0.9` became a no-op, and `brightness_0.8` brightened instead of darkening. TTA detections are still compared to the reference box without mapping them back to the original frame.
-8. [gap, fixed] `roc_auc` ignored ties and did not start the curve at (0, 0).
+1. [gap, fixed] CLI did not import. `cli.py` used `area` and `match_detection_to_ground_truth` from `utils/geometry.py`, which did not exist [confirmed]. The restored signature is assumed from how `cli.py` unpacked the result: `(matched, best_iou, gt_index)` [inferred]. The pipeline labels whole images with `assign_detections_to_ground_truth`.
+2. [gap, fixed] Leakage risk (rule 1). Fixed: the meta-model split is by image into train, val, and test.
+3. [gap, fixed] Reproducibility (rule 2). `seed_everything` did not seed PyTorch.
+4. [gap, fixed] Mock labeling (rule 3). `smoke-test` forces mock and `run` refuses it. Every results row has `is_mock`.
+5. [gap, fixed] Fixed: mAP follows COCOeval and is tested against pycocotools.
+6. [gap, fixed] Config keys that did nothing. Fixed: implemented keys act, the rest were removed, and unknown keys and unusable values are rejected.
+7. [gap, fixed] TTA augmentation mapping. `scale_*` was a no-op, `brightness_0.8` brightened, and TTA boxes were not mapped back.
+8. [gap, fixed] `roc_auc` ignored ties.
+9. [gap] The files in `configs/dataset`, `configs/model`, and `configs/probes` are not loaded by anything.
+10. [gap] The TTA view set always includes the unmodified image first, so `num_samples` counts it.
+11. [gap] No code computes OOD AUROC, because the repo has no labeled OOD data.
 
 ## 7. Fast checks
 
