@@ -1,7 +1,13 @@
-import os, random
+import os
+import random
+
 import numpy as np
+import torch
+
 
 def seed_everything(seed: int) -> None:
+    """Seed Python, NumPy, and PyTorch (CPU and any CUDA devices)."""
     random.seed(seed)
     np.random.seed(seed)
+    torch.manual_seed(seed)
     os.environ["PYTHONHASHSEED"] = str(seed)
