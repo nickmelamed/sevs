@@ -1,16 +1,19 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
-from typing import Any, Dict, List, Tuple
+from typing import Any
+
 import numpy as np
 from sklearn.linear_model import LogisticRegression
 
 from sevs.evaluation.error_eval import ErrorDetectionResults, evaluate_error_detection
 from sevs.utils.splits import split_image_ids
 
+
 @dataclass
 class MetaErrorModel:
     model: Any
-    feature_names: List[str]
+    feature_names: list[str]
 
     def fit(self, X: np.ndarray, y: np.ndarray) -> None:
         self.model.fit(X, y)
@@ -20,7 +23,7 @@ class MetaErrorModel:
         proba = self.model.predict_proba(X)
         return proba[:, 1]
 
-def build_meta_model(cfg: Dict[str, Any], feature_names: List[str]) -> MetaErrorModel:
+def build_meta_model(cfg: dict[str, Any], feature_names: list[str]) -> MetaErrorModel:
     fam = cfg["model"]["family"]
     params = cfg["model"].get("params", {})
     if fam == "logistic_regression":
@@ -42,8 +45,8 @@ def fit_and_score_by_image(
     X: np.ndarray,
     y_incorrect: np.ndarray,
     image_ids: list[str],
-    cfg: Dict[str, Any],
-    feature_names: List[str],
+    cfg: dict[str, Any],
+    feature_names: list[str],
     seed: int,
 ) -> MetaErrorScores:
     """Fit on the train images and score the val and test images.

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Dict, Iterable, List
 
 import numpy as np
 
@@ -12,7 +12,7 @@ from sevs.models.uncertainty import entropy_from_conf
 @dataclass
 class OODScoreSummary:
     method: str
-    image_scores: List[float]
+    image_scores: list[float]
     mean_score: float
 
 
@@ -22,8 +22,8 @@ def _energy_from_logits(logits: np.ndarray, temperature: float = 1.0) -> float:
     return float(-temperature * (m + np.log(np.sum(np.exp(z - m)))))
 
 
-def detection_level_scores(detections: List[Detection], method: str = "max_softmax_prob") -> List[float]:
-    scores: List[float] = []
+def detection_level_scores(detections: list[Detection], method: str = "max_softmax_prob") -> list[float]:
+    scores: list[float] = []
     for d in detections:
         if method == "max_softmax_prob":
             scores.append(1.0 - float(d.conf))
@@ -46,8 +46,8 @@ def detection_level_scores(detections: List[Detection], method: str = "max_softm
     return scores
 
 
-def summarize_ood_scores(images_to_detections: Iterable[List[Detection]], method: str = "max_softmax_prob", reduction: str = "max") -> OODScoreSummary:
-    image_scores: List[float] = []
+def summarize_ood_scores(images_to_detections: Iterable[list[Detection]], method: str = "max_softmax_prob", reduction: str = "max") -> OODScoreSummary:
+    image_scores: list[float] = []
     for detections in images_to_detections:
         det_scores = detection_level_scores(detections, method=method)
         if not det_scores:

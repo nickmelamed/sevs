@@ -1,8 +1,6 @@
 from __future__ import annotations
-from typing import Dict, Type
-from dataclasses import dataclass
 
-_REGISTRY: Dict[str, type] = {}
+_REGISTRY: dict[str, type] = {}
 
 def register(name: str):
     def deco(cls):

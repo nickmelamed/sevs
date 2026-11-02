@@ -1,8 +1,10 @@
 from __future__ import annotations
+
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Optional
-import numpy as np
+
 import cv2
+import numpy as np
 
 
 @dataclass
@@ -49,7 +51,10 @@ def apply_perturbation_with_inverse(img: np.ndarray, name: str, severity: int) -
         return PerturbationResult(image=decoded, invert_boxes=_identity)
     if name == "random_crop":
         pad = int(min(H, W) * 0.05 * severity)
-        x1 = pad; y1 = pad; x2 = W - pad; y2 = H - pad
+        x1 = pad
+        y1 = pad
+        x2 = W - pad
+        y2 = H - pad
         crop = out[y1:y2, x1:x2]
         resized = cv2.resize(crop, (W, H), interpolation=cv2.INTER_LINEAR)
         sx = (x2 - x1) / max(W, 1)

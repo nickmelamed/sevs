@@ -1,18 +1,36 @@
-# This file documents the meaning of fields in configs/eval/*.yaml
+# Meaning of the fields in configs/eval/*.yaml. The loader rejects keys that
+# are not listed in sevs/utils/config_schema.py.
 run:
   name: "Unique run name used in results path"
+  seed: "Seeds Python, NumPy, PyTorch, and the image split"
+  output_dir: "Directory for the results table and plots"
+  device: "backend: cpu, cuda, or mps"
 dataset:
+  name: "mock, coco, or voc. mock is only for smoke-test"
   subset_manifest: "Path to a JSON manifest listing images used for evaluation"
+  class_filter: "List of class ids to keep in ground truth and detections, or null"
 detector:
-  family: "Detector backend; 'mock' for starter; implement real wrappers"
+  family: "mock, torchvision, or ultralytics"
+  conf_threshold: "Detections below this confidence are dropped"
+  nms_iou_threshold: "Class-wise NMS applied after the detector, or null"
+  max_detections_per_image: "Keep this many highest-confidence detections, or null"
+ground_truth:
+  match_iou_threshold: "IoU needed to call a detection correct"
+  ignore_crowd: "Detections on crowd regions are ignored in mAP when true"
+  min_box_area: "Ground-truth boxes smaller than this are dropped"
 uncertainty:
-  methods: "Enable temperature scaling / mc-dropout / test-time augmentation"
+  methods: "tta: augmentations and num_samples for test-time augmentation"
 probes:
   perturbations: "List of perturbations to probe consistency"
+  matching: "iou_match_threshold: minimum IoU to match a probe detection to the reference"
 meta_error_predictor:
   features: "Feature names computed per detection for error prediction"
+  training: "train_ratio, val_ratio, and test_ratio of images, which must sum to 1"
 evaluation:
-  calibration: "ECE/Brier of confidence-like scores"
-  error_detection: "AUROC of predicting incorrect detections"
+  detection: "COCO-style mAP50 and mAP50_95"
+  calibration: "ece and brier of confidence"
+  error_detection: "auroc and auprc of predicting incorrect detections, on the test images"
+  abstention: "coverage and risk at each threshold on P(incorrect), on the test images"
+  ood: "Image-level OOD score means"
 reporting:
   outputs: "Files written to the run directory"

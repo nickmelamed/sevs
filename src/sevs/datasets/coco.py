@@ -1,21 +1,21 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any
 
 import numpy as np
-from PIL import Image
 from torchvision.datasets import CocoDetection
 
-from .common import Sample, _load_manifest, limit_indices
+from .common import Sample, _load_manifest
 from .registry import register
 
 
 @register("coco")
 @dataclass
 class CocoDataset:
-    cfg: Dict[str, Any]
+    cfg: dict[str, Any]
 
     def __post_init__(self) -> None:
         manifest = _load_manifest(self.cfg.get("subset_manifest"))
@@ -35,7 +35,7 @@ class CocoDataset:
 
         self.dataset = CocoDetection(root=str(img_root), annFile=str(ann_file))
         self.selected_filenames = set(self.manifest.get("images", [])) if self.manifest.get("images") else None
-        self.indices: List[int] = []
+        self.indices: list[int] = []
         for i in range(len(self.dataset)):
             image_id = self.dataset.ids[i]
             img_info = self.dataset.coco.loadImgs([image_id])[0]
@@ -57,8 +57,8 @@ class CocoDataset:
             image_id = self.dataset.ids[idx]
             img_info = self.dataset.coco.loadImgs([image_id])[0]
             image_np = np.array(image.convert("RGB"))
-            boxes: List[List[float]] = []
-            labels: List[int] = []
+            boxes: list[list[float]] = []
+            labels: list[int] = []
             for ann in anns:
                 if ann.get("iscrowd", 0):
                     continue

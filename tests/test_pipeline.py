@@ -64,6 +64,7 @@ def test_run_is_deterministic(cfg):
 
 
 def test_synthetic_run_produces_a_meta_auroc(cfg):
+    cfg["detector"]["nms_iou_threshold"] = None
     row = run_pipeline(cfg, samples=make_samples(), detector=JitterDetector(1))
     assert row["n_images"] == 40 and row["n_detections"] == 160
     assert 0.0 <= row["meta_error_auroc"] <= 1.0
@@ -106,6 +107,7 @@ class DuplicateDetector(BaseDetector):
 
 
 def test_duplicate_detections_are_labeled_incorrect(cfg):
+    cfg["detector"]["nms_iou_threshold"] = None
     samples = [
         {
             "image": np.zeros((100, 120, 3), dtype=np.uint8),
@@ -119,3 +121,79 @@ def test_duplicate_detections_are_labeled_incorrect(cfg):
     row = run_pipeline(cfg, samples=samples, detector=DuplicateDetector())
     # per image: labels [1, 0] against confidences [0.9, 0.8]
     assert row["brier_conf"] == pytest.approx(((0.1) ** 2 + 0.8**2) / 2)
+
+
+def duplicate_samples():
+    return [
+        {
+            "image": np.zeros((100, 120, 3), dtype=np.uint8),
+            "image_id": f"i{i}",
+            "gt_boxes_xyxy": np.array([[10.0, 10.0, 60.0, 50.0]]),
+            "gt_labels": np.array([1]),
+            "meta": {},
+        }
+        for i in range(2)
+    ]
+
+
+def test_nms_setting_removes_duplicates_before_labeling(cfg):
+    row = run_pipeline(cfg, samples=duplicate_samples(), detector=DuplicateDetector())
+    assert row["n_detections"] == 2
+
+
+def test_max_detections_and_confidence_threshold_are_applied(cfg):
+    cfg["detector"]["nms_iou_threshold"] = None
+    cfg["detector"]["max_detections_per_image"] = 1
+    assert run_pipeline(copy.deepcopy(cfg), samples=duplicate_samples(), detector=DuplicateDetector())["n_detections"] == 2
+    cfg["detector"]["max_detections_per_image"] = None
+    cfg["detector"]["conf_threshold"] = 0.85
+    assert run_pipeline(cfg, samples=duplicate_samples(), detector=DuplicateDetector())["n_detections"] == 2
+
+
+def test_class_filter_removes_other_classes(cfg):
+    cfg["dataset"]["class_filter"] = [2]
+    row = run_pipeline(cfg, samples=make_samples(5), detector=JitterDetector(1))
+    assert row["n_detections"] == 5
+
+
+def test_disabled_sections_leave_no_columns(cfg):
+    cfg["evaluation"]["calibration"]["enabled"] = False
+    cfg["evaluation"]["abstention"]["enabled"] = False
+    cfg["meta_error_predictor"]["enabled"] = False
+    row = run_pipeline(cfg, samples=make_samples(5), detector=JitterDetector(1))
+    assert "ece_conf" not in row and "meta_error_auroc" not in row
+    assert not any(k.startswith("abstain_") for k in row)
+
+
+def test_listed_metrics_choose_columns(cfg):
+    cfg["evaluation"]["calibration"]["metrics"] = ["ece"]
+    cfg["evaluation"]["error_detection"]["metrics"] = ["auprc"]
+    row = run_pipeline(cfg, samples=make_samples(20), detector=JitterDetector(1))
+    assert "ece_conf" in row and "brier_conf" not in row
+    assert "meta_error_auprc" in row and "meta_error_auroc" not in row
+
+
+def test_detection_map_uses_the_configured_ground_truth(cfg):
+    cfg["evaluation"]["detection"] = {"enabled": True, "metrics": ["mAP50"]}
+    cfg["detector"]["nms_iou_threshold"] = None
+    row = run_pipeline(cfg, samples=duplicate_samples(), detector=DuplicateDetector())
+    assert row["map50"] == 1.0 and "map50_95" not in row
+
+
+def test_outputs_list_controls_files(cfg, tmp_path):
+    cfg["reporting"]["outputs"] = ["results_table.csv"]
+    run_pipeline(cfg, samples=make_samples(20), detector=JitterDetector(1))
+    assert sorted(p.name for p in (tmp_path / "out").iterdir()) == ["results_table.csv"]
+    cfg["reporting"]["outputs"] = ["results_table.csv", "reliability_diagram.png", "roc_error_detection.png"]
+    run_pipeline(cfg, samples=make_samples(20), detector=JitterDetector(1))
+    assert sorted(p.name for p in (tmp_path / "out").iterdir()) == [
+        "reliability_diagram.png",
+        "results_table.csv",
+        "roc_error_detection.png",
+    ]
+
+
+def test_reporting_disabled_writes_nothing(cfg, tmp_path):
+    cfg["reporting"]["enabled"] = False
+    run_pipeline(cfg, samples=make_samples(5), detector=JitterDetector(1))
+    assert not (tmp_path / "out").exists() or not list((tmp_path / "out").iterdir())

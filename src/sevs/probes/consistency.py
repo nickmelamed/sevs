@@ -1,9 +1,11 @@
 from __future__ import annotations
-from typing import List, Dict, Any
+
 import numpy as np
+
 from sevs.utils.geometry import box_iou, cxcywh
 
-def summarize_consistency(ref_box: np.ndarray, boxes: List[np.ndarray], classes: List[int], confs: List[float], ref_cls: int) -> Dict[str, float]:
+
+def summarize_consistency(ref_box: np.ndarray, boxes: list[np.ndarray], classes: list[int], confs: list[float], ref_cls: int) -> dict[str, float]:
     # boxes: matched boxes across probes to ref detection
     if len(boxes) == 0:
         return dict(

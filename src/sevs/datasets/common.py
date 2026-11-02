@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any
 
 import numpy as np
 
@@ -13,10 +13,10 @@ class Sample:
     image_id: str
     gt_boxes_xyxy: np.ndarray
     gt_labels: np.ndarray
-    meta: Dict[str, Any]
+    meta: dict[str, Any]
 
 
-def _load_manifest(path: str | None) -> Dict[str, Any] | None:
+def _load_manifest(path: str | None) -> dict[str, Any] | None:
     if not path:
         return None
     p = Path(path)
@@ -28,7 +28,7 @@ def _load_manifest(path: str | None) -> Dict[str, Any] | None:
         return json.load(f)
 
 
-def limit_indices(total: int, max_items: int | None = None) -> List[int]:
+def limit_indices(total: int, max_items: int | None = None) -> list[int]:
     if max_items is None or max_items >= total:
         return list(range(total))
     return list(range(max_items))

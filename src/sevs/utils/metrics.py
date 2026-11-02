@@ -1,7 +1,8 @@
 from __future__ import annotations
-from typing import Tuple
+
 import numpy as np
 from scipy.stats import rankdata
+
 
 def brier_score(y_true: np.ndarray, y_prob: np.ndarray) -> float:
     y_true = y_true.astype(float)
