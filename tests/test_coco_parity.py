@@ -30,8 +30,10 @@ def random_scene(seed, n_images=12, n_classes=3):
         dets = []
         for b, c in zip(boxes, labels):
             if rng.random() < 0.8:
-                jitter = rng.normal(0, 4, 4)
-                dets.append(Detection(np.array(b) + jitter, c, float(rng.uniform(0.2, 1.0))))
+                box = np.array(b) + rng.normal(0, 4, 4)
+                box[2] = max(box[2], box[0] + 1)
+                box[3] = max(box[3], box[1] + 1)
+                dets.append(Detection(box, c, float(rng.uniform(0.2, 1.0))))
         for _ in range(int(rng.integers(0, 4))):
             x, y = rng.uniform(0, 200, 2)
             w, h = rng.uniform(10, 80, 2)
@@ -74,5 +76,42 @@ def test_matches_cocoeval(seed):
     gts, crowd, preds = random_scene(seed)
     ref_map, ref_map50 = coco_stats(gts, crowd, preds)
     out = evaluate_detection_predictions(preds, gts, crowd=crowd)
+    assert out.map50_95 == pytest.approx(ref_map, abs=1e-9)
+    assert out.map50 == pytest.approx(ref_map50, abs=1e-9)
+
+
+def rounded(preds, digits):
+    return [(i, [Detection(d.box_xyxy, d.cls, round(d.conf, digits)) for d in ds]) for i, ds in preds]
+
+
+@pytest.mark.parametrize("seed", range(10))
+def test_matches_cocoeval_with_tied_scores_and_many_images(seed):
+    gts, crowd, preds = random_scene(seed, n_images=30)
+    preds = rounded(preds, 1)
+    ref_map, ref_map50 = coco_stats(gts, crowd, preds)
+    out = evaluate_detection_predictions(preds, gts, crowd=crowd)
+    assert out.map50_95 == pytest.approx(ref_map, abs=1e-9)
+    assert out.map50 == pytest.approx(ref_map50, abs=1e-9)
+
+
+@pytest.mark.parametrize("seed", range(10))
+def test_matches_cocoeval_with_tied_scores_and_few_images(seed):
+    gts, crowd, preds = random_scene(seed, n_images=9)
+    preds = rounded(preds, 1)
+    ref_map, ref_map50 = coco_stats(gts, crowd, preds)
+    out = evaluate_detection_predictions(preds, gts, crowd=crowd)
+    assert out.map50_95 == pytest.approx(ref_map, abs=1e-9)
+    assert out.map50 == pytest.approx(ref_map50, abs=1e-9)
+
+
+@pytest.mark.parametrize("seed", range(5))
+def test_matches_cocoeval_when_an_image_has_more_than_100_detections_of_a_class(seed):
+    rng = np.random.default_rng(seed)
+    gts = [("0", np.array([[10.0, 10.0, 60.0, 60.0], [100.0, 100.0, 150.0, 150.0]]), np.array([1, 1]))]
+    dets = [Detection(np.array([10.0, 10.0, 60.0, 60.0]) + rng.normal(0, 2, 4), 1, round(float(rng.uniform(0.1, 0.5)), 2)) for _ in range(120)]
+    dets.append(Detection(np.array([100.0, 100.0, 150.0, 150.0]), 1, 0.05))
+    preds = [("0", dets)]
+    ref_map, ref_map50 = coco_stats(gts, {}, preds, n_classes=1)
+    out = evaluate_detection_predictions(preds, gts)
     assert out.map50_95 == pytest.approx(ref_map, abs=1e-9)
     assert out.map50 == pytest.approx(ref_map50, abs=1e-9)

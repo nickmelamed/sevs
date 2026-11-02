@@ -4,7 +4,7 @@ Matching, crowd handling, and the 101-point recall interpolation follow
 pycocotools' ``COCOeval`` for the ``bbox`` task with the "all" area range, so
 the numbers can be compared with published COCO results. Precision is
 tp / (tp + fp) without COCOeval's 1e-16 guard term, so results agree with
-pycocotools to about 1e-15.
+pycocotools to about 1e-15 in the parity tests, including tied scores.
 """
 from __future__ import annotations
 
@@ -26,6 +26,12 @@ class DetectionEvalResults:
     map50_95: float | None
     per_class_ap50: dict[int, float]
     backend: str
+
+
+def _image_order(image_id: str) -> tuple[int, int, str]:
+    """Order numeric ids by value, as pycocotools does, and other ids by text after them."""
+    text = str(image_id)
+    return (0, int(text), text) if text.lstrip("-").isdigit() else (1, 0, text)
 
 
 def _ioa(det_box: np.ndarray, crowd_box: np.ndarray) -> float:
@@ -119,7 +125,7 @@ def evaluate_detection_predictions(
         return DetectionEvalResults(map50=float("nan"), map50_95=float("nan"), per_class_ap50={}, backend="coco-style")
     gt_by_image = {image_id: (boxes, labels) for image_id, boxes, labels in ground_truths}
     pred_by_image = {image_id: dets for image_id, dets in predictions}
-    image_ids = sorted(set(gt_by_image) | set(pred_by_image) | set(crowd), key=str)
+    image_ids = sorted(set(gt_by_image) | set(pred_by_image) | set(crowd), key=_image_order)
 
     per_class_ap: dict[int, list[float]] = {}
     for cls in class_ids:
