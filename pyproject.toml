@@ -8,9 +8,21 @@ version = "0.1.0"
 description = "Self-Evaluating Vision System: uncertainty + consistency probing + error prediction"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = []
+dependencies = [
+  "numpy>=2.0",
+  "scipy",
+  "scikit-learn",
+  "pandas",
+  "matplotlib",
+  "opencv-python",
+  "pyyaml",
+  "pillow",
+  "torch",
+  "torchvision",
+]
 
 [project.optional-dependencies]
+yolo = ["ultralytics"]
 dev = ["pytest", "hypothesis", "ruff", "mypy", "types-PyYAML", "pandas-stubs"]
 
 [tool.setuptools.packages.find]
