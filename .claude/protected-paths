@@ -1,0 +1,31 @@
+# Edits to these paths need the owner's approval, even in auto mode.
+# One glob per line, relative to the repo root. "*" crosses directories and a
+# trailing "/" means everything under it. Text after "  #" is the reason.
+#
+# The agent's own settings, this list, gate-commands, style-ignore,
+# style-words, and scripts/agent/ are always protected by guard_edit.py,
+# whatever this file says.
+CLAUDE.md  # the project's instructions to Claude
+.claude/rules/  # path-scoped standards
+.claude/agents/  # reviewer agents
+.claude/skills/  # repo procedures
+Makefile  # defines agent-check and ci
+pyproject.toml  # dependencies and lint, type, and test configuration
+setup.cfg  # tool configuration
+pytest.ini  # test selection
+tox.ini  # test selection
+.pre-commit-config.yaml  # commit hooks
+.github/workflows/  # CI
+*.lock  # locked dependencies
+package-lock.json  # locked dependencies
+docs/SPEC.md  # the design spec
+.env  # secrets
+.env.*  # secrets
+src/sevs/evaluation/  # mAP, calibration, error, and OOD evaluation
+src/sevs/utils/metrics.py  # ECE, Brier, and AUROC
+src/sevs/utils/geometry.py  # IoU used by matching and mAP
+src/sevs/schemas/  # evaluation schema
+configs/eval/  # evaluation settings decide the numbers
+data/splits/  # fixed image subsets
+results/  # results tables and figures
+reports/paper/  # numbers reported in the write-up
