@@ -18,7 +18,7 @@ from sevs.models.meta_error import fit_and_score_by_image
 from sevs.models.uncertainty import entropy_from_conf, tta_confidence_std
 from sevs.probes.consistency import summarize_consistency
 from sevs.probes.perturbations import apply_perturbation_with_inverse
-from sevs.probes.tta import generate_tta_images
+from sevs.probes.tta import generate_tta_views
 from sevs.utils.geometry import area, box_iou, match_detection_to_ground_truth
 from sevs.utils.io import ensure_dir, load_yaml
 from sevs.utils.seed import seed_everything
@@ -85,6 +85,20 @@ def smoke_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
     return out
 
 
+def predict_tta(detector: Any, image: np.ndarray, method: Dict[str, Any]) -> List[List[Detection]]:
+    """Run the detector on the TTA views and return detections in the original frame."""
+    views = generate_tta_views(image, method.get("augmentations", []))[: int(method.get("num_samples", 8))]
+    out = []
+    for v in views:
+        dets = detector.predict(v.image)
+        if dets:
+            inv = v.invert_boxes(np.stack([d.box_xyxy for d in dets], axis=0))
+            for d, box in zip(dets, inv):
+                d.box_xyxy = box
+        out.append(dets)
+    return out
+
+
 def run_pipeline(cfg: Dict[str, Any], samples: Any = None, detector: Any = None) -> Dict[str, Any]:
     seed = int(cfg["run"]["seed"])
     seed_everything(seed)
@@ -135,10 +149,8 @@ def run_pipeline(cfg: Dict[str, Any], samples: Any = None, detector: Any = None)
                     d.box_xyxy = inv_box
             probe_predictions.append((probe_dets, res.invert_boxes))
 
-        tta_enabled = any(m.get("name") == "tta" and m.get("enabled") for m in cfg.get("uncertainty", {}).get("methods", []))
         tta_method = next((m for m in cfg.get("uncertainty", {}).get("methods", []) if m.get("name") == "tta" and m.get("enabled")), None)
-        tta_images = generate_tta_images(image, tta_method.get("augmentations", []))[: int(tta_method.get("num_samples", 8))] if tta_method else []
-        tta_predictions = [detector.predict(ti) for ti in tta_images]
+        tta_predictions = predict_tta(detector, image, tta_method) if tta_method else []
 
         for j, d in enumerate(dets):
             matched, best_iou, _ = match_detection_to_ground_truth(d.box_xyxy, d.cls, gt_boxes, gt_labels, iou_threshold=iou_threshold, require_class_match=True)

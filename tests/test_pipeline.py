@@ -71,3 +71,26 @@ def test_synthetic_run_produces_a_meta_auroc(cfg):
     assert row["n_train_images"] + row["n_val_images"] + row["n_test_images"] == 40
     assert row["n_train_images"] == 28
     assert 0.0 <= row["abstain_coverage_0.5"] <= 1.0
+
+
+class BrightBoxDetector(BaseDetector):
+    """Detect the bounding box of the bright pixels, so it follows any geometric change."""
+
+    def predict(self, image):
+        ys, xs = np.where(image[..., 0] > 200)
+        if len(xs) == 0:
+            return []
+        box = np.array([xs.min(), ys.min(), xs.max() + 1, ys.max() + 1], dtype=float)
+        return [Detection(box, 1, 0.9)]
+
+
+def test_tta_detections_come_back_in_the_original_frame():
+    from sevs.cli import predict_tta
+
+    image = np.zeros((100, 160, 3), dtype=np.uint8)
+    image[20:50, 30:90] = 255
+    method = {"augmentations": ["hflip", "scale_0.9", "scale_1.1", "brightness_1.2"], "num_samples": 5}
+    preds = predict_tta(BrightBoxDetector(), image, method)
+    assert len(preds) == 5
+    for dets in preds:
+        assert dets[0].box_xyxy == pytest.approx([30, 20, 90, 50], abs=3.0)
