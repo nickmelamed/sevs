@@ -1,4 +1,4 @@
-"""Pin current behavior of the core numeric code with small synthetic inputs."""
+"""Regression tests for the numeric core, using small synthetic inputs."""
 import numpy as np
 import pytest
 from hypothesis import given
@@ -20,8 +20,6 @@ probs = st.floats(0, 1, allow_nan=False)
 def det(box, cls=1, conf=0.9, logits=None):
     return Detection(np.array(box, dtype=float), cls, conf, logits)
 
-
-# calibration
 
 def test_ece_and_brier_hand_worked():
     y = np.array([1, 1, 0, 0])
@@ -55,8 +53,6 @@ def test_ece_and_brier_bounded(pairs, bins):
     assert 0.0 <= expected_calibration_error(y, p, n_bins=bins) <= 1.0 + 1e-9
     assert 0.0 <= brier_score(y, p) <= 1.0 + 1e-9
 
-
-# detection mAP
 
 def test_map_no_predictions_is_zero():
     gts = [("a", np.array([[0, 0, 10, 10]], dtype=float), np.array([1]))]
@@ -97,8 +93,6 @@ def test_map5095_is_below_map50_for_loose_boxes():
     assert 0.0 < out.map50_95 < 1.0
 
 
-# consistency
-
 def test_consistency_without_matches_is_worst_case():
     out = summarize_consistency(np.array([0, 0, 10, 10], dtype=float), [], [], [], ref_cls=1)
     assert out == dict(iou_stability=0.0, center_jitter=0.0, size_jitter=0.0, class_churn_rate=1.0, confidence_variance=0.0)
@@ -118,8 +112,6 @@ def test_consistency_class_churn_and_confidence_variance():
     assert out["confidence_variance"] == pytest.approx(0.01)
 
 
-# uncertainty
-
 def test_entropy_from_conf_peaks_at_half():
     assert entropy_from_conf(0.5) == pytest.approx(np.log(2))
     assert entropy_from_conf(0.0) == pytest.approx(0.0, abs=1e-6)
@@ -135,8 +127,6 @@ def test_tta_std_needs_two_values():
     assert tta_confidence_std([0.9]) == 0.0
     assert tta_confidence_std([0.5, 0.7]) == pytest.approx(0.1)
 
-
-# OOD
 
 def test_ood_max_softmax_score_is_one_minus_conf():
     assert detection_level_scores([det([0, 0, 1, 1], conf=0.8)], "max_softmax_prob") == pytest.approx([0.2])
@@ -157,8 +147,6 @@ def test_ood_image_without_detections_scores_one():
     assert out.image_scores == pytest.approx([1.0, 0.4])
     assert out.mean_score == pytest.approx(0.7)
 
-
-# perturbations
 
 @given(st.sampled_from(["hflip", "random_crop"]), st.integers(1, 3))
 def test_geometric_perturbations_keep_image_and_box_shapes(name, severity):
@@ -201,8 +189,6 @@ def test_unknown_perturbation_is_identity():
     img = np.random.default_rng(0).integers(0, 255, (8, 8, 3), dtype=np.uint8)
     assert np.array_equal(apply_perturbation_with_inverse(img, "nope", 1).image, img)
 
-
-# detector and meta-model
 
 def test_mock_detector_is_deterministic_for_a_seed():
     img = np.zeros((100, 120, 3), dtype=np.uint8)

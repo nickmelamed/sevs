@@ -35,10 +35,8 @@ def match_detection_to_ground_truth(
 ) -> tuple[bool, float, int]:
     """Return ``(matched, best_iou, gt_index)`` for one detection.
 
-    The best candidate is the ground-truth box with the highest IoU, limited
-    to the same class when ``require_class_match`` is set. ``gt_index`` is -1
-    when there is no candidate. Each detection is matched on its own, so two
-    detections can claim the same ground-truth box.
+    ``gt_index`` is -1 when no ground-truth box qualifies. Detections are
+    matched independently, so two can claim the same ground-truth box.
     """
     best_iou = 0.0
     best_idx = -1

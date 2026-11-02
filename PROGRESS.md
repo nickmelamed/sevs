@@ -1,13 +1,11 @@
 # Progress
 
-Current phase and what is left. Claude updates this at the end of each
-phase. CLAUDE.md stays stable and does not track status. The "Now" section
-is shown to Claude at the start of each session and after compaction.
+Current phase and what is left. Updated at the end of each phase.
 
 ## Now
 
-- [ ] Review the `chore/agent-standards` branch, then push and open a PR (not done yet).
-- [ ] Decide on the open bugs below. None of them is fixed.
+- [ ] Review and merge the `chore/agent-standards` PR.
+- [ ] Decide on the open bugs under Next.
 
 ## Next
 
@@ -24,16 +22,18 @@ is shown to Claude at the start of each session and after compaction.
 
 ## Done
 
-- [x] Phase 0: assessed the repo and recommended a retrofit.
-- [x] Phase 1: wrote docs/SPEC.md and docs/DECISIONS.md.
-- [x] Phase 2: installed the agent standards (v2.0.1), CLAUDE.md, rules, protected paths, and the skills `run-eval`, `prepare-data`, and `smoke-test`.
-- [x] Phase 3: cleaned up README style.
-- [x] Phase 4: fixed `roc_auc` ties, TTA scale and brightness factors, and the missing geometry helpers that broke the CLI. Cleared ruff and mypy and added 50 tests. The gate runs `make agent-check`.
+- [x] Phase 0: assessment. Retrofit chosen.
+- [x] Phase 1: docs/SPEC.md and docs/DECISIONS.md.
+- [x] Phase 2: agent tooling v2.0.1, CLAUDE.md, rules, protected paths, skills.
+- [x] Phase 3: README style.
+- [x] Phase 4: fixed `roc_auc` ties, TTA factors, and the missing geometry helpers. Cleared ruff and mypy. Added tests. The gate runs `make agent-check`.
+- [x] Declared runtime and dev dependencies in `pyproject.toml`.
 
 ## Open questions for the owner
 
 - The helpers `area` and `match_detection_to_ground_truth` follow an assumed signature, because the original code is gone. Confirm or correct it (SPEC 6.1).
 - The repo root holds a 1.1 GB virtualenv named `sevs/`. It is gitignored. Move it outside the repo or rename it to `.venv`?
+- TTA numbers from before this branch are not comparable to later ones, since the scale and brightness augmentations changed.
 - `requirements.txt` is a full `pip freeze` including an editable git line for this repo. `pyproject.toml` lists no runtime dependencies. Which should be the source of truth?
 - `data/splits/*.json` store an absolute `coco_root` from this machine.
 - The `release` skill came with the installer and nothing uses it yet.

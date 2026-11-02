@@ -59,8 +59,8 @@ environments may have NumPy 1 and give different results.
 
 - Plan before multi-file changes. Write the plan down and wait for approval
   when the task spans several modules or touches the spec.
-- A task is done when the Stop hook's checks pass and you have shown the
-  output. Show evidence (commands and results), not claims.
+- A task is done when the Stop hook's checks pass. Show the commands and
+  their output.
 - Commit in small atomic Conventional Commits (`type(scope): subject`). Code
   and its tests go in the same commit.
 - You may branch and commit locally. Ask before pushing, opening or merging

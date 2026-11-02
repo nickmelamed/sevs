@@ -24,9 +24,7 @@ def expected_calibration_error(y_true: np.ndarray, y_prob: np.ndarray, n_bins: i
 def roc_auc(y_true: np.ndarray, y_score: np.ndarray) -> float:
     """Return the area under the ROC curve, counting tied scores as half.
 
-    Computed from average ranks, so it equals the probability that a random
-    positive outscores a random negative. Returns NaN if only one class is
-    present.
+    Returns NaN if only one class is present.
     """
     y = np.asarray(y_true).astype(int)
     pos = int(np.sum(y == 1))

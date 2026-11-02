@@ -14,8 +14,7 @@ Run an evaluation for the config the owner named, such as
 3. Note `run.seed` and `run.output_dir`. Do not overwrite an existing output
    directory without asking.
 4. Run `python -m sevs.cli run --config <config>` with an interpreter that has
-   the dependencies installed. The `sevs/` virtualenv in the repo root may be
-   the one that works here.
+   the dependencies installed. The `sevs/` virtualenv has the pinned ones.
 5. Show the printed results row and list the files written to the output
    directory.
 6. Report `n_images` and `n_detections`, and say which metrics are NaN and
