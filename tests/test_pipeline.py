@@ -94,3 +94,28 @@ def test_tta_detections_come_back_in_the_original_frame():
     assert len(preds) == 5
     for dets in preds:
         assert dets[0].box_xyxy == pytest.approx([30, 20, 90, 50], abs=3.0)
+
+
+class DuplicateDetector(BaseDetector):
+    """Report the true box twice, with confidence 0.9 and 0.8."""
+
+    def predict(self, image):
+        h, w = image.shape[:2]
+        box = np.array([10.0, 10.0, 60.0, 50.0])
+        return [Detection(box.copy(), 1, 0.9), Detection(box.copy(), 1, 0.8)]
+
+
+def test_duplicate_detections_are_labeled_incorrect(cfg):
+    samples = [
+        {
+            "image": np.zeros((100, 120, 3), dtype=np.uint8),
+            "image_id": f"i{i}",
+            "gt_boxes_xyxy": np.array([[10.0, 10.0, 60.0, 50.0]]),
+            "gt_labels": np.array([1]),
+            "meta": {},
+        }
+        for i in range(2)
+    ]
+    row = run_pipeline(cfg, samples=samples, detector=DuplicateDetector())
+    # per image: labels [1, 0] against confidences [0.9, 0.8]
+    assert row["brier_conf"] == pytest.approx(((0.1) ** 2 + 0.8**2) / 2)

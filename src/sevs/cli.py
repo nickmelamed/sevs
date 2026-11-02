@@ -19,7 +19,7 @@ from sevs.models.uncertainty import entropy_from_conf, tta_confidence_std
 from sevs.probes.consistency import summarize_consistency
 from sevs.probes.perturbations import apply_perturbation_with_inverse
 from sevs.probes.tta import generate_tta_views
-from sevs.utils.geometry import area, box_iou, match_detection_to_ground_truth
+from sevs.utils.geometry import area, assign_detections_to_ground_truth, box_iou
 from sevs.utils.io import ensure_dir, load_yaml
 from sevs.utils.seed import seed_everything
 
@@ -152,9 +152,17 @@ def run_pipeline(cfg: Dict[str, Any], samples: Any = None, detector: Any = None)
         tta_method = next((m for m in cfg.get("uncertainty", {}).get("methods", []) if m.get("name") == "tta" and m.get("enabled")), None)
         tta_predictions = predict_tta(detector, image, tta_method) if tta_method else []
 
+        correct_flags = assign_detections_to_ground_truth(
+            np.array([d.box_xyxy for d in dets]).reshape(-1, 4),
+            np.array([d.cls for d in dets], dtype=int),
+            np.array([d.conf for d in dets], dtype=float),
+            gt_boxes,
+            gt_labels,
+            iou_threshold=iou_threshold,
+            require_class_match=True,
+        )
         for j, d in enumerate(dets):
-            matched, best_iou, _ = match_detection_to_ground_truth(d.box_xyxy, d.cls, gt_boxes, gt_labels, iou_threshold=iou_threshold, require_class_match=True)
-            is_correct = 1 if matched else 0
+            is_correct = 1 if correct_flags[j] else 0
 
             tta_confs: List[float] = []
             for tdets in tta_predictions:

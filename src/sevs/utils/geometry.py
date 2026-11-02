@@ -25,6 +25,28 @@ def area(box: np.ndarray) -> float:
     return float(max(0.0, box[2] - box[0]) * max(0.0, box[3] - box[1]))
 
 
+def _best_candidate(
+    box: np.ndarray,
+    cls: int,
+    gt_boxes: np.ndarray,
+    gt_labels: np.ndarray,
+    require_class_match: bool,
+    available: np.ndarray | None = None,
+) -> tuple[float, int]:
+    best_iou = 0.0
+    best_idx = -1
+    for j, (gt_box, gt_label) in enumerate(zip(gt_boxes, gt_labels)):
+        if available is not None and not available[j]:
+            continue
+        if require_class_match and int(gt_label) != int(cls):
+            continue
+        iou = box_iou(box, gt_box)
+        if best_idx == -1 or iou > best_iou:
+            best_iou = iou
+            best_idx = j
+    return best_iou, best_idx
+
+
 def match_detection_to_ground_truth(
     box: np.ndarray,
     cls: int,
@@ -36,15 +58,33 @@ def match_detection_to_ground_truth(
     """Return ``(matched, best_iou, gt_index)`` for one detection.
 
     ``gt_index`` is -1 when no ground-truth box qualifies. Detections are
-    matched independently, so two can claim the same ground-truth box.
+    matched independently, so two can claim the same ground-truth box. Use
+    ``assign_detections_to_ground_truth`` to label a whole image.
     """
-    best_iou = 0.0
-    best_idx = -1
-    for j, (gt_box, gt_label) in enumerate(zip(gt_boxes, gt_labels)):
-        if require_class_match and int(gt_label) != int(cls):
-            continue
-        iou = box_iou(box, gt_box)
-        if best_idx == -1 or iou > best_iou:
-            best_iou = iou
-            best_idx = j
+    best_iou, best_idx = _best_candidate(box, cls, gt_boxes, gt_labels, require_class_match)
     return best_iou >= iou_threshold and best_idx != -1, best_iou, best_idx
+
+
+def assign_detections_to_ground_truth(
+    boxes: np.ndarray,
+    classes: np.ndarray,
+    confs: np.ndarray,
+    gt_boxes: np.ndarray,
+    gt_labels: np.ndarray,
+    iou_threshold: float = 0.5,
+    require_class_match: bool = True,
+) -> list[bool]:
+    """Return one flag per detection, True if it is a correct detection.
+
+    Detections are visited from highest to lowest confidence. Each takes the
+    unmatched ground-truth box with the highest IoU, and a ground-truth box
+    is used at most once, so duplicate detections are incorrect.
+    """
+    available = np.ones(len(gt_boxes), dtype=bool)
+    flags = [False] * len(boxes)
+    for i in np.argsort(-np.asarray(confs, dtype=float), kind="stable"):
+        iou, idx = _best_candidate(boxes[i], int(classes[i]), gt_boxes, gt_labels, require_class_match, available)
+        if idx != -1 and iou >= iou_threshold:
+            flags[int(i)] = True
+            available[idx] = False
+    return flags

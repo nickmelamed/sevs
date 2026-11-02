@@ -3,7 +3,13 @@ import pytest
 from hypothesis import given
 from hypothesis import strategies as st
 
-from sevs.utils.geometry import area, box_iou, cxcywh, match_detection_to_ground_truth
+from sevs.utils.geometry import (
+    area,
+    assign_detections_to_ground_truth,
+    box_iou,
+    cxcywh,
+    match_detection_to_ground_truth,
+)
 
 coord = st.floats(0, 100, allow_nan=False, allow_infinity=False)
 
@@ -90,3 +96,39 @@ def test_two_detections_can_match_the_same_ground_truth_box():
     first = match_detection_to_ground_truth(np.array([0, 0, 10, 10], dtype=float), 1, gt, labels, 0.5, True)
     second = match_detection_to_ground_truth(np.array([1, 1, 10, 10], dtype=float), 1, gt, labels, 0.5, True)
     assert first[0] and second[0] and first[2] == second[2] == 0
+
+
+def test_assignment_gives_each_ground_truth_box_to_one_detection():
+    gt = np.array([[0, 0, 10, 10]], dtype=float)
+    boxes = np.array([[0, 0, 10, 10], [1, 1, 10, 10]], dtype=float)
+    flags = assign_detections_to_ground_truth(boxes, np.array([1, 1]), np.array([0.6, 0.9]), gt, np.array([1]), 0.5, True)
+    assert flags == [False, True]
+
+
+def test_assignment_goes_in_confidence_order_not_input_order():
+    gt = np.array([[0, 0, 10, 10]], dtype=float)
+    boxes = np.array([[0, 0, 10, 10], [0, 0, 10, 10]], dtype=float)
+    a = assign_detections_to_ground_truth(boxes, np.array([1, 1]), np.array([0.9, 0.5]), gt, np.array([1]), 0.5, True)
+    b = assign_detections_to_ground_truth(boxes, np.array([1, 1]), np.array([0.5, 0.9]), gt, np.array([1]), 0.5, True)
+    assert a == [True, False] and b == [False, True]
+
+
+def test_assignment_falls_back_to_the_next_best_unmatched_box():
+    gt = np.array([[0, 0, 10, 10], [0, 0, 10, 9]], dtype=float)
+    boxes = np.array([[0, 0, 10, 10], [0, 0, 10, 10]], dtype=float)
+    flags = assign_detections_to_ground_truth(boxes, np.array([1, 1]), np.array([0.9, 0.8]), gt, np.array([1, 1]), 0.5, True)
+    assert flags == [True, True]
+
+
+def test_assignment_without_ground_truth_is_all_false():
+    boxes = np.array([[0, 0, 10, 10]], dtype=float)
+    assert assign_detections_to_ground_truth(boxes, np.array([1]), np.array([0.9]), np.zeros((0, 4)), np.zeros(0, dtype=int), 0.5, True) == [False]
+
+
+@given(st.lists(boxes(), min_size=0, max_size=6), st.lists(boxes(), min_size=0, max_size=6), st.integers(0, 10))
+def test_assignment_never_matches_more_than_the_ground_truth_count(dets, gts, seed):
+    rng = np.random.default_rng(seed)
+    d = np.array(dets).reshape(-1, 4)
+    g = np.array(gts).reshape(-1, 4)
+    flags = assign_detections_to_ground_truth(d, np.ones(len(d), dtype=int), rng.random(len(d)), g, np.ones(len(g), dtype=int), 0.1, True)
+    assert len(flags) == len(d) and sum(flags) <= len(g)
