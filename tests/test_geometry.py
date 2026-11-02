@@ -132,3 +132,13 @@ def test_assignment_never_matches_more_than_the_ground_truth_count(dets, gts, se
     g = np.array(gts).reshape(-1, 4)
     flags = assign_detections_to_ground_truth(d, np.ones(len(d), dtype=int), rng.random(len(d)), g, np.ones(len(g), dtype=int), 0.1, True)
     assert len(flags) == len(d) and sum(flags) <= len(g)
+
+
+def test_ioa_is_intersection_over_the_first_box_area():
+    from sevs.utils.geometry import box_ioa
+
+    det = np.array([0, 0, 10, 10], dtype=float)
+    assert box_ioa(det, np.array([5, 0, 50, 10], dtype=float)) == pytest.approx(0.5)
+    assert box_ioa(det, np.array([-5, -5, 50, 50], dtype=float)) == 1.0
+    assert box_ioa(det, np.array([20, 20, 30, 30], dtype=float)) == 0.0
+    assert box_ioa(np.array([5, 5, 5, 5], dtype=float), np.array([0, 0, 10, 10], dtype=float)) == 0.0

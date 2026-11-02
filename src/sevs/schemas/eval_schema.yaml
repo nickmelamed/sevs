@@ -1,5 +1,5 @@
-# Meaning of the fields in configs/eval/*.yaml. The loader rejects keys that
-# are not listed in sevs/utils/config_schema.py.
+# Field meanings for configs/eval/*.yaml. run_pipeline rejects keys and values
+# that sevs/utils/config_schema.py does not allow.
 run:
   name: "Unique run name used in results path"
   seed: "Seeds Python, NumPy, PyTorch, and the image split"
@@ -22,7 +22,7 @@ uncertainty:
   methods: "tta: augmentations and num_samples for test-time augmentation"
 probes:
   perturbations: "List of perturbations to probe consistency"
-  matching: "iou_match_threshold: minimum IoU to match a probe detection to the reference"
+  matching: "iou_match_threshold and class_match_required apply to matching probe and TTA detections to the reference, not to correctness labels"
 meta_error_predictor:
   features: "Feature names computed per detection for error prediction"
   training: "train_ratio, val_ratio, and test_ratio of images, which must sum to 1"

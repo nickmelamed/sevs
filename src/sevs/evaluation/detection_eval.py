@@ -14,7 +14,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from sevs.models.detector import Detection
-from sevs.utils.geometry import box_iou
+from sevs.utils.geometry import box_ioa, box_iou
 
 IOU_THRESHOLDS = [round(0.5 + 0.05 * i, 2) for i in range(10)]
 RECALL_THRESHOLDS = np.linspace(0.0, 1.0, 101)
@@ -34,14 +34,6 @@ def _image_order(image_id: str) -> tuple[int, int, str]:
     return (0, int(text), text) if text.lstrip("-").isdigit() else (1, 0, text)
 
 
-def _ioa(det_box: np.ndarray, crowd_box: np.ndarray) -> float:
-    xa, ya = max(det_box[0], crowd_box[0]), max(det_box[1], crowd_box[1])
-    xb, yb = min(det_box[2], crowd_box[2]), min(det_box[3], crowd_box[3])
-    inter = max(0.0, xb - xa) * max(0.0, yb - ya)
-    area = max(0.0, det_box[2] - det_box[0]) * max(0.0, det_box[3] - det_box[1])
-    return float(inter / area) if area > 0 else 0.0
-
-
 def _match_image_class(
     det_boxes: np.ndarray, gt_boxes: np.ndarray, crowd_boxes: np.ndarray, iou_thr: float
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -56,7 +48,7 @@ def _match_image_class(
         for g in range(n_gt):
             ious[d, g] = box_iou(det_boxes[d], gt_boxes[g])
         for c in range(n_crowd):
-            ious[d, n_gt + c] = _ioa(det_boxes[d], crowd_boxes[c])
+            ious[d, n_gt + c] = box_ioa(det_boxes[d], crowd_boxes[c])
     is_crowd = np.array([False] * n_gt + [True] * n_crowd)
     taken = np.zeros(n_gt + n_crowd, dtype=bool)
     for d in range(n_det):

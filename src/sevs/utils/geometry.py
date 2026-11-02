@@ -15,6 +15,17 @@ def box_iou(a: np.ndarray, b: np.ndarray) -> float:
     denom = areaA + areaB - inter
     return float(inter / denom) if denom > 0 else 0.0
 
+def box_ioa(a: np.ndarray, b: np.ndarray) -> float:
+    """Return the area of the overlap of ``a`` and ``b`` divided by the area of ``a``."""
+    xA = max(a[0], b[0])
+    yA = max(a[1], b[1])
+    xB = min(a[2], b[2])
+    yB = min(a[3], b[3])
+    inter = max(0.0, xB - xA) * max(0.0, yB - yA)
+    area_a = max(0.0, a[2] - a[0]) * max(0.0, a[3] - a[1])
+    return float(inter / area_a) if area_a > 0 else 0.0
+
+
 def cxcywh(box: np.ndarray) -> tuple[float,float,float,float]:
     x1,y1,x2,y2 = box
     w = max(0.0, x2-x1)

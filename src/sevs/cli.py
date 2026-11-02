@@ -21,7 +21,7 @@ from sevs.probes.consistency import summarize_consistency
 from sevs.probes.perturbations import apply_perturbation_with_inverse
 from sevs.probes.tta import generate_tta_views
 from sevs.utils.config_schema import validate_config
-from sevs.utils.geometry import area, assign_detections_to_ground_truth, box_iou
+from sevs.utils.geometry import area, assign_detections_to_ground_truth, box_ioa, box_iou
 from sevs.utils.ground_truth import prepare_ground_truth
 from sevs.utils.io import load_yaml
 from sevs.utils.seed import seed_everything
@@ -104,6 +104,14 @@ def predict_tta(detector: Any, image: np.ndarray, method: dict[str, Any]) -> lis
     return out
 
 
+def _on_crowd(det: Detection, gt: Any, threshold: float) -> bool:
+    """Return True if the detection lies on a crowd region of its class, as mAP counts it."""
+    return any(
+        int(label) == det.cls and box_ioa(det.box_xyxy, box) >= threshold
+        for box, label in zip(gt.crowd_boxes, gt.crowd_labels)
+    )
+
+
 def _on(section: dict[str, Any], default: bool) -> bool:
     return bool(section.get("enabled", default))
 
@@ -114,6 +122,13 @@ def _listed(section: dict[str, Any], name: str) -> bool:
 
 
 def run_pipeline(cfg: dict[str, Any], samples: Any = None, detector: Any = None) -> dict[str, Any]:
+    """Run the pipeline and return one results row.
+
+    Passing ``samples`` or ``detector`` replaces what the config names, so the
+    row is labeled ``is_mock`` unless the config is real and both come from it.
+    """
+    validate_config(cfg)
+    injected = samples is not None or detector is not None
     seed = int(cfg["run"]["seed"])
     seed_everything(seed)
 
@@ -139,7 +154,7 @@ def run_pipeline(cfg: dict[str, Any], samples: Any = None, detector: Any = None)
         max_detections=None if max_dets is None else int(max_dets),
         allowed_classes=class_filter,
     )
-    feature_names = cfg["meta_error_predictor"]["features"]
+    feature_names = cfg["meta_error_predictor"].get("features", [])
     iou_threshold = float(gt_cfg.get("match_iou_threshold", 0.5))
     require_class_match = bool(matching.get("class_match_required", True))
     min_probe_iou = float(matching.get("iou_match_threshold", 0.0))
@@ -208,6 +223,8 @@ def run_pipeline(cfg: dict[str, Any], samples: Any = None, detector: Any = None)
         )
         for j, d in enumerate(dets):
             is_correct = 1 if correct_flags[j] else 0
+            if not is_correct and _on_crowd(d, gt, iou_threshold):
+                continue
 
             tta_confs: list[float] = []
             for tdets in tta_predictions:
@@ -244,7 +261,7 @@ def run_pipeline(cfg: dict[str, Any], samples: Any = None, detector: Any = None)
     nan = float("nan")
     row: dict[str, Any] = {
         "run_name": cfg["run"]["name"],
-        "is_mock": is_mock(cfg),
+        "is_mock": is_mock(cfg) or injected,
         "n_images": total_images,
         "n_detections": total_detections,
     }
@@ -264,7 +281,9 @@ def run_pipeline(cfg: dict[str, Any], samples: Any = None, detector: Any = None)
 
     error_cfg = eval_cfg.get("error_detection", {})
     meta_cfg = cfg["meta_error_predictor"]
-    if _on(meta_cfg, True) and _on(error_cfg, True):
+    abstention = eval_cfg.get("abstention", {})
+    report_errors = _on(error_cfg, True)
+    if _on(meta_cfg, True) and (report_errors or _on(abstention, False)):
         scores = None
         if X_rows:
             scores = fit_and_score_by_image(
@@ -276,17 +295,16 @@ def run_pipeline(cfg: dict[str, Any], samples: Any = None, detector: Any = None)
                 seed,
             )
         for metric, attr in (("auroc", "auroc"), ("auprc", "auprc")):
-            if _listed(error_cfg, metric):
+            if report_errors and _listed(error_cfg, metric):
                 row[f"meta_error_{metric}"] = getattr(scores.test, attr) if scores else nan
                 row[f"meta_error_{metric}_val"] = getattr(scores.val, attr) if scores else nan
         if scores:
             row.update({f"n_{k}_images": len(v) for k, v in scores.images.items()})
-            abstention = eval_cfg.get("abstention", {})
             if _on(abstention, False) and len(scores.y_test):
                 for t, coverage, risk in abstention_tradeoff(scores.y_test, scores.p_test, abstention["thresholds"]):
                     row[f"abstain_coverage_{t}"] = coverage
                     row[f"abstain_risk_{t}"] = risk
-            if write and "roc_error_detection.png" in outputs and len(set(scores.y_test.tolist())) > 1:
+            if report_errors and write and "roc_error_detection.png" in outputs and len(set(scores.y_test.tolist())) > 1:
                 save_roc_diagram(out_dir, scores.y_test, scores.p_test)
 
     detection = eval_cfg.get("detection", {})
@@ -318,7 +336,6 @@ def main(argv: list[str] | None = None) -> dict[str, Any]:
 
     args = ap.parse_args(argv)
     cfg = load_yaml(args.config)
-    validate_config(cfg)
     logger.info(f"Loaded config: {args.config}")
     if args.cmd == "smoke-test":
         cfg = smoke_config(cfg)

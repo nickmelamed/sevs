@@ -197,3 +197,35 @@ def test_reporting_disabled_writes_nothing(cfg, tmp_path):
     cfg["reporting"]["enabled"] = False
     run_pipeline(cfg, samples=make_samples(5), detector=JitterDetector(1))
     assert not (tmp_path / "out").exists() or not list((tmp_path / "out").iterdir())
+
+
+def test_abstention_works_without_the_error_detection_section(cfg):
+    cfg["evaluation"]["error_detection"]["enabled"] = False
+    row = run_pipeline(cfg, samples=make_samples(20), detector=JitterDetector(1))
+    assert "meta_error_auroc" not in row
+    assert "abstain_coverage_0.5" in row
+
+
+def test_a_config_without_the_meta_model_needs_no_feature_list(cfg):
+    cfg["meta_error_predictor"]["enabled"] = False
+    del cfg["meta_error_predictor"]["features"]
+    row = run_pipeline(cfg, samples=make_samples(5), detector=JitterDetector(1))
+    assert "meta_error_auroc" not in row
+
+
+def test_injected_inputs_are_labeled_mock_unless_the_config_is_real(tmp_path):
+    real = load_yaml("configs/eval/eval_real_torchvision_coco.yaml")
+    real["run"]["output_dir"] = str(tmp_path)
+    row = run_pipeline(real, samples=make_samples(3), detector=JitterDetector(1))
+    assert row["is_mock"] is True
+
+
+def test_detections_on_a_crowd_region_are_left_out_of_the_labels(cfg):
+    cfg["detector"]["nms_iou_threshold"] = None
+    samples = duplicate_samples()
+    for s in samples:
+        s["meta"] = {"crowd_boxes_xyxy": np.array([[8.0, 8.0, 70.0, 60.0]]), "crowd_labels": np.array([1])}
+    row = run_pipeline(cfg, samples=samples, detector=DuplicateDetector())
+    # the duplicate lies on the crowd region and is ignored, so only the matched detection is scored
+    assert row["n_detections"] == 4
+    assert row["brier_conf"] == pytest.approx((1 - 0.9) ** 2)
