@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
@@ -68,6 +69,21 @@ def _match_reference_to_probe(ref_det: Detection, probe_dets: List[Detection], c
     if best is None:
         return [], [], []
     return [best.box_xyxy], [best.cls], [best.conf]
+
+
+def is_mock(cfg: Dict[str, Any]) -> bool:
+    """Return True if the detector or the dataset is the synthetic mock."""
+    return cfg["detector"].get("family") == "mock" or cfg["dataset"].get("name") == "mock"
+
+
+def smoke_config(cfg: Dict[str, Any]) -> Dict[str, Any]:
+    """Return a copy of ``cfg`` that runs on mock data and writes to a separate directory."""
+    out = copy.deepcopy(cfg)
+    out["dataset"]["name"] = "mock"
+    out["detector"]["family"] = "mock"
+    out["run"]["name"] = f"{out['run']['name']}_smoke"
+    out["run"]["output_dir"] = f"{out['run']['output_dir']}_smoke"
+    return out
 
 
 def run_pipeline(cfg: Dict[str, Any], samples: Any = None, detector: Any = None) -> Dict[str, Any]:
@@ -159,7 +175,7 @@ def run_pipeline(cfg: Dict[str, Any], samples: Any = None, detector: Any = None)
             calibration_true.append(is_correct)
             calibration_prob.append(float(d.conf))
 
-    row: Dict[str, Any] = {"run_name": cfg["run"]["name"], "n_images": total_images, "n_detections": total_detections}
+    row: Dict[str, Any] = {"run_name": cfg["run"]["name"], "is_mock": is_mock(cfg), "n_images": total_images, "n_detections": total_detections}
 
     if calibration_prob:
         cal = evaluate_calibration(np.array(calibration_true, dtype=int), np.array(calibration_prob, dtype=float), n_bins=int(cfg["evaluation"]["calibration"].get("ece_bins", 15)))
@@ -201,7 +217,7 @@ def run_pipeline(cfg: Dict[str, Any], samples: Any = None, detector: Any = None)
     return row
 
 
-def main():
+def main(argv: list[str] | None = None) -> Dict[str, Any]:
     ap = argparse.ArgumentParser(prog="sevs")
     sub = ap.add_subparsers(dest="cmd", required=True)
     p_smoke = sub.add_parser("smoke-test", help="Run end-to-end pipeline on synthetic data")
@@ -209,12 +225,17 @@ def main():
     p_run = sub.add_parser("run", help="Run on dataset from config")
     p_run.add_argument("--config", required=True)
 
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
     cfg = load_yaml(args.config)
     logger.info(f"Loaded config: {args.config}")
+    if args.cmd == "smoke-test":
+        cfg = smoke_config(cfg)
+    elif is_mock(cfg):
+        raise SystemExit("Refusing to run: the config uses the mock detector or dataset. Use smoke-test for mock runs.")
     row = run_pipeline(cfg)
     logger.info(f"Done. Summary: {row}")
     print(row)
+    return row
 
 
 if __name__ == "__main__":
