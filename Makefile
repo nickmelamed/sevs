@@ -22,8 +22,8 @@ test-fast:
 style:
 	python3 scripts/agent/check_style.py --changed .
 
-# Fast checks the Stop hook can run. Add lint and typecheck once each passes.
-agent-check: test-fast style
+# Fast checks the Stop hook runs.
+agent-check: lint typecheck test-fast style
 
 ci: lint typecheck test style
 	python3 scripts/agent/check_tests.py --warn

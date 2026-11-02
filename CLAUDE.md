@@ -40,9 +40,9 @@ make typecheck    # mypy
 make agent-check  # the fast checks the Stop hook runs
 ```
 
-The repo root contains a virtualenv named `sevs/` (ignored by git) whose
-`python3` has no pytest, ruff, or mypy. Call tools by explicit path or
-activate a different environment.
+Use the repo's virtualenv, `sevs/` in the root (ignored by git). It has the
+NumPy 2 that `requirements.txt` pins, plus pytest, ruff, and mypy. Other
+environments may have NumPy 1 and give different results.
 
 ## Where things live
 
