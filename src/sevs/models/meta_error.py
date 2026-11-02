@@ -5,6 +5,8 @@ from typing import Any
 
 import numpy as np
 from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import StandardScaler
 
 from sevs.evaluation.error_eval import ErrorDetectionResults, evaluate_error_detection
 from sevs.utils.splits import split_image_ids
@@ -27,7 +29,7 @@ def build_meta_model(cfg: dict[str, Any], feature_names: list[str]) -> MetaError
     fam = cfg["model"]["family"]
     params = cfg["model"].get("params", {})
     if fam == "logistic_regression":
-        m = LogisticRegression(**params)
+        m = make_pipeline(StandardScaler(), LogisticRegression(**params))
         return MetaErrorModel(m, feature_names)
     raise NotImplementedError(f"Meta model '{fam}' not implemented in starter.")
 
