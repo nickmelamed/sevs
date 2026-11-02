@@ -1,5 +1,7 @@
 import numpy as np
+
 from sevs.probes.consistency import summarize_consistency
+
 
 def test_consistency_keys():
     ref = np.array([0,0,10,10], dtype=float)

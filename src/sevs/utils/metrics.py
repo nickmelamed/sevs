@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import Tuple
 import numpy as np
+from scipy.stats import rankdata
 
 def brier_score(y_true: np.ndarray, y_prob: np.ndarray) -> float:
     y_true = y_true.astype(float)
@@ -21,15 +22,15 @@ def expected_calibration_error(y_true: np.ndarray, y_prob: np.ndarray, n_bins: i
     return float(ece)
 
 def roc_auc(y_true: np.ndarray, y_score: np.ndarray) -> float:
-    # Minimal AUROC without sklearn (but we do have sklearn; keeping standalone)
-    order = np.argsort(-y_score)
-    y = y_true[order].astype(int)
-    pos = np.sum(y == 1); neg = np.sum(y == 0)
+    """Return the area under the ROC curve, counting tied scores as half.
+
+    Returns NaN if only one class is present.
+    """
+    y = np.asarray(y_true).astype(int)
+    pos = int(np.sum(y == 1))
+    neg = int(np.sum(y == 0))
     if pos == 0 or neg == 0:
         return float("nan")
-    tps = np.cumsum(y == 1)
-    fps = np.cumsum(y == 0)
-    tpr = tps / pos
-    fpr = fps / neg
-    # trapezoidal
-    return float(np.trapezoid(tpr, fpr))
+    ranks = rankdata(np.asarray(y_score, dtype=float), method="average")
+    rank_sum_pos = float(np.sum(ranks[y == 1]))
+    return float((rank_sum_pos - pos * (pos + 1) / 2) / (pos * neg))

@@ -1,6 +1,10 @@
 from __future__ import annotations
-import argparse, json, os, random
+
+import argparse
+import json
+import random
 from pathlib import Path
+
 
 def main():
     ap = argparse.ArgumentParser()

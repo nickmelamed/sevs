@@ -1,23 +1,62 @@
 from __future__ import annotations
-from typing import List
+
+import math
+
+import cv2
 import numpy as np
+
 from .perturbations import apply_perturbation
 
-def generate_tta_images(img: np.ndarray, augmentations: List[str]) -> List[np.ndarray]:
+
+def _brightness(img: np.ndarray, factor: float) -> np.ndarray:
+    return np.clip(img.astype(np.float32) * factor, 0, 255).astype(np.uint8)
+
+
+def _scale(img: np.ndarray, factor: float) -> np.ndarray:
+    """Zoom in for factor < 1 and shrink onto a black canvas for factor > 1."""
+    h, w = img.shape[:2]
+    if factor == 1.0:
+        return img.copy()
+    if factor < 1.0:
+        ch, cw = max(1, int(round(h * factor))), max(1, int(round(w * factor)))
+        y0, x0 = (h - ch) // 2, (w - cw) // 2
+        return cv2.resize(img[y0:y0 + ch, x0:x0 + cw], (w, h), interpolation=cv2.INTER_LINEAR)
+    sh, sw = max(1, int(round(h / factor))), max(1, int(round(w / factor)))
+    small = cv2.resize(img, (sw, sh), interpolation=cv2.INTER_LINEAR)
+    out = np.zeros_like(img)
+    y0, x0 = (h - sh) // 2, (w - sw) // 2
+    out[y0:y0 + sh, x0:x0 + sw] = small
+    return out
+
+
+def _split_factor(aug: str) -> tuple[str, float | None]:
+    name, _, val = aug.rpartition("_")
+    try:
+        factor = float(val)
+    except ValueError:
+        return aug, None
+    if not math.isfinite(factor) or factor <= 0:
+        raise ValueError(f"Augmentation factor must be positive and finite: {aug}")
+    return name, factor
+
+
+def generate_tta_images(img: np.ndarray, augmentations: list[str]) -> list[np.ndarray]:
+    """Return the original image followed by one augmented copy per name.
+
+    Names ending in a number are read as ``<kind>_<factor>``. Kinds other
+    than brightness and scale map ``abs(factor - 1) * 10`` to a perturbation
+    severity. Non-finite or non-positive factors raise ``ValueError``.
+    """
     imgs = [img]
     for aug in augmentations:
-        if "_" in aug and aug.split("_")[-1].replace(".","",1).isdigit():
-            # e.g., brightness_0.8 handled by mapping to severity approx
-            name, val = aug.split("_", 1)
-            try:
-                f = float(val)
-                severity = int(round(abs(f - 1.0) * 10))
-            except Exception:
-                severity = 1
-            imgs.append(apply_perturbation(img, name, max(1, severity)))
-        elif aug.startswith("scale_"):
-            # lightweight: use random_crop severity proxy
-            imgs.append(apply_perturbation(img, "random_crop", 1))
-        else:
+        name, factor = _split_factor(aug)
+        if factor is None:
             imgs.append(apply_perturbation(img, aug, 1))
+        elif name == "brightness":
+            imgs.append(_brightness(img, factor))
+        elif name == "scale":
+            imgs.append(_scale(img, factor))
+        else:
+            severity = max(1, int(round(abs(factor - 1.0) * 10)))
+            imgs.append(apply_perturbation(img, name, severity))
     return imgs

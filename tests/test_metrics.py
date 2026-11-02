@@ -1,5 +1,7 @@
 import numpy as np
-from sevs.utils.metrics import expected_calibration_error, brier_score
+
+from sevs.utils.metrics import brier_score, expected_calibration_error
+
 
 def test_brier():
     y = np.array([0,1,1,0])

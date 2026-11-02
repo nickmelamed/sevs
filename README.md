@@ -1,13 +1,13 @@
-# SEVS — Self-Evaluating Vision System (Object Detection Reliability)
+# SEVS (Self-Evaluating Vision System) for object detection reliability
 
-SEVS is a hardware-agnostic perception reliability project that turns an object detector into a **self-evaluating vision system**:
+SEVS is a hardware-agnostic perception reliability project that turns an object detector into a self-evaluating vision system in four steps:
 
 1. run a real detector
 2. measure calibration and stability under perturbations
 3. learn a meta-model that predicts which detections are likely wrong
 4. optionally score image-level OOD risk
 
-## What is now implemented
+## What is implemented
 
 - Real detector wrappers:
   - `torchvision` detection backends (`fasterrcnn_resnet50_fpn_v2`, `retinanet_resnet50_fpn_v2`, `ssdlite320_mobilenet_v3_large`)
