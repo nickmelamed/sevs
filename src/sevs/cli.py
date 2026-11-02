@@ -70,7 +70,7 @@ def _match_reference_to_probe(ref_det: Detection, probe_dets: List[Detection], c
     return [best.box_xyxy], [best.cls], [best.conf]
 
 
-def run_pipeline(cfg: Dict[str, Any]) -> Dict[str, Any]:
+def run_pipeline(cfg: Dict[str, Any], samples: Any = None, detector: Any = None) -> Dict[str, Any]:
     seed = int(cfg["run"]["seed"])
     seed_everything(seed)
 
@@ -78,7 +78,8 @@ def run_pipeline(cfg: Dict[str, Any]) -> Dict[str, Any]:
     ensure_dir(out_dir)
 
     device = cfg.get("run", {}).get("device", {}).get("backend")
-    detector = build_detector(cfg["detector"], seed=seed, device=device)
+    if detector is None:
+        detector = build_detector(cfg["detector"], seed=seed, device=device)
     feature_names = cfg["meta_error_predictor"]["features"]
     iou_threshold = float(cfg["ground_truth"].get("match_iou_threshold", 0.5))
     require_class_match = bool(cfg["probes"].get("matching", {}).get("class_match_required", True))
@@ -94,7 +95,7 @@ def run_pipeline(cfg: Dict[str, Any]) -> Dict[str, Any]:
     total_images = 0
     total_detections = 0
 
-    for sample in _iter_samples(cfg):
+    for sample in (samples if samples is not None else _iter_samples(cfg)):
         total_images += 1
         image = sample["image"]
         image_id = sample["image_id"]
