@@ -21,8 +21,8 @@ class CocoDataset:
         manifest = _load_manifest(self.cfg.get("subset_manifest"))
         self.manifest = manifest or {}
         self.coco_root = Path(
-            self.manifest.get("coco_root")
-            or self.cfg.get("root")
+            self.cfg.get("root")
+            or self.manifest.get("coco_root")
             or "data/external/coco"
         )
         split = self.manifest.get("split") or self.cfg.get("split") or "val2017"
@@ -59,11 +59,15 @@ class CocoDataset:
             image_np = np.array(image.convert("RGB"))
             boxes: list[list[float]] = []
             labels: list[int] = []
+            crowd_boxes: list[list[float]] = []
+            crowd_labels: list[int] = []
             for ann in anns:
-                if ann.get("iscrowd", 0):
-                    continue
                 x, y, w, h = ann["bbox"]
                 if w <= 0 or h <= 0:
+                    continue
+                if ann.get("iscrowd", 0):
+                    crowd_boxes.append([x, y, x + w, y + h])
+                    crowd_labels.append(int(ann["category_id"]))
                     continue
                 boxes.append([x, y, x + w, y + h])
                 labels.append(int(ann["category_id"]))
@@ -72,6 +76,12 @@ class CocoDataset:
                 image_id=str(image_id),
                 gt_boxes_xyxy=np.array(boxes, dtype=float) if boxes else np.zeros((0, 4), dtype=float),
                 gt_labels=np.array(labels, dtype=int) if labels else np.zeros((0,), dtype=int),
-                meta={"file_name": img_info.get("file_name"), "height": img_info.get("height"), "width": img_info.get("width")},
+                meta={
+                    "file_name": img_info.get("file_name"),
+                    "height": img_info.get("height"),
+                    "width": img_info.get("width"),
+                    "crowd_boxes_xyxy": np.array(crowd_boxes, dtype=float).reshape(-1, 4),
+                    "crowd_labels": np.array(crowd_labels, dtype=int),
+                },
             )
 

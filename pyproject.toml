@@ -17,13 +17,14 @@ dependencies = [
   "opencv-python",
   "pyyaml",
   "pillow",
+  "pycocotools",
   "torch",
   "torchvision",
 ]
 
 [project.optional-dependencies]
 yolo = ["ultralytics"]
-dev = ["pytest", "hypothesis", "pycocotools", "ruff", "mypy", "types-PyYAML", "pandas-stubs"]
+dev = ["pytest", "hypothesis", "ruff", "mypy", "types-PyYAML", "pandas-stubs"]
 
 [tool.setuptools.packages.find]
 where = ["src"]
