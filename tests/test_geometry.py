@@ -82,3 +82,11 @@ def test_match_without_ground_truth():
     box = np.array([0, 0, 10, 10], dtype=float)
     out = match_detection_to_ground_truth(box, 1, np.zeros((0, 4)), np.zeros((0,), dtype=int), 0.5, True)
     assert out == (False, 0.0, -1)
+
+
+def test_two_detections_can_match_the_same_ground_truth_box():
+    gt = np.array([[0, 0, 10, 10]], dtype=float)
+    labels = np.array([1])
+    first = match_detection_to_ground_truth(np.array([0, 0, 10, 10], dtype=float), 1, gt, labels, 0.5, True)
+    second = match_detection_to_ground_truth(np.array([1, 1, 10, 10], dtype=float), 1, gt, labels, 0.5, True)
+    assert first[0] and second[0] and first[2] == second[2] == 0

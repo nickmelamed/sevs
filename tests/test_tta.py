@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from sevs.probes.tta import generate_tta_images
 
@@ -44,3 +45,9 @@ def test_default_config_augmentations_are_all_distinct():
     for i in range(len(out)):
         for j in range(i + 1, len(out)):
             assert not np.array_equal(out[i], out[j]), (augs[i], augs[j])
+
+
+@pytest.mark.parametrize("aug", ["scale_inf", "scale_nan", "brightness_0", "brightness_-1"])
+def test_non_finite_or_non_positive_factor_raises(aug):
+    with pytest.raises(ValueError):
+        generate_tta_images(_img(), [aug])

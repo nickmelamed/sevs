@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 import cv2
 import numpy as np
 
@@ -13,7 +15,7 @@ def _brightness(img: np.ndarray, factor: float) -> np.ndarray:
 def _scale(img: np.ndarray, factor: float) -> np.ndarray:
     """Zoom in for factor < 1 and shrink onto a black canvas for factor > 1."""
     h, w = img.shape[:2]
-    if factor <= 0 or factor == 1.0:
+    if factor == 1.0:
         return img.copy()
     if factor < 1.0:
         ch, cw = max(1, int(round(h * factor))), max(1, int(round(w * factor)))
@@ -30,17 +32,20 @@ def _scale(img: np.ndarray, factor: float) -> np.ndarray:
 def _split_factor(aug: str) -> tuple[str, float | None]:
     name, _, val = aug.rpartition("_")
     try:
-        return name, float(val)
+        factor = float(val)
     except ValueError:
         return aug, None
+    if not math.isfinite(factor) or factor <= 0:
+        raise ValueError(f"Augmentation factor must be positive and finite: {aug}")
+    return name, factor
 
 
 def generate_tta_images(img: np.ndarray, augmentations: list[str]) -> list[np.ndarray]:
     """Return the original image followed by one augmented copy per name.
 
-    A name ending in a number is read as ``<kind>_<factor>``. ``brightness``
-    multiplies pixel values by the factor and ``scale`` zooms by it. Other
-    kinds map the distance of the factor from 1 to a perturbation severity.
+    Names ending in a number are read as ``<kind>_<factor>``. Kinds other
+    than brightness and scale map ``abs(factor - 1) * 10`` to a perturbation
+    severity. Non-finite or non-positive factors raise ``ValueError``.
     """
     imgs = [img]
     for aug in augmentations:
