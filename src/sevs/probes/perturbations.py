@@ -43,7 +43,10 @@ def apply_perturbation_with_inverse(img: np.ndarray, name: str, severity: int) -
         q = int(max(10, 90 - 20 * severity))
         encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), q]
         _, enc = cv2.imencode(".jpg", out, encode_param)
-        return PerturbationResult(image=cv2.imdecode(enc, cv2.IMREAD_COLOR), invert_boxes=_identity)
+        decoded = cv2.imdecode(enc, cv2.IMREAD_COLOR)
+        if decoded is None:
+            raise RuntimeError("JPEG round trip failed")
+        return PerturbationResult(image=decoded, invert_boxes=_identity)
     if name == "random_crop":
         pad = int(min(H, W) * 0.05 * severity)
         x1 = pad; y1 = pad; x2 = W - pad; y2 = H - pad

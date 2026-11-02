@@ -90,7 +90,7 @@ class UltralyticsYOLODetector(BaseDetector):
             from ultralytics import YOLO
         except Exception as e:  # pragma: no cover
             raise ImportError("ultralytics is required for YOLO detector support") from e
-        self.model = YOLO(variant)
+        self.model: Any = YOLO(variant)
         self.conf_threshold = conf_threshold
         self.device = device
 

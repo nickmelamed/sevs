@@ -1,4 +1,5 @@
 import numpy as np
+
 from sevs.evaluation.detection_eval import evaluate_detection_predictions
 from sevs.models.detector import Detection
 
