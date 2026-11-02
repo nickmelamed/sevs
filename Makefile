@@ -1,23 +1,26 @@
 .PHONY: install lint typecheck test test-fast style smoke agent-check ci
 
+# Use the repo's virtualenv when it exists, so the checks do not depend on the shell's PATH.
+PY := $(if $(wildcard .venv/bin/python),.venv/bin/python,python)
+
 install:
-	pip install -r requirements.txt
-	pip install -e .
+	$(PY) -m pip install -r requirements.txt
+	$(PY) -m pip install -e ".[dev]"
 
 smoke:
-	python -m sevs.cli smoke-test --config configs/eval/eval_default.yaml
+	$(PY) -m sevs.cli smoke-test --config configs/eval/eval_default.yaml
 
 lint:
-	ruff check src tests scripts
+	$(PY) -m ruff check src tests scripts
 
 typecheck:
-	mypy src
+	$(PY) -m mypy src
 
 test:
-	python -m pytest -q
+	$(PY) -m pytest -q
 
 test-fast:
-	python -m pytest -x -q -m "not slow"
+	$(PY) -m pytest -x -q -m "not slow"
 
 style:
 	python3 scripts/agent/check_style.py --changed .
