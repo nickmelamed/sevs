@@ -20,14 +20,19 @@ Format: Keep a Changelog. Versioning: Semantic Versioning.
 - The meta-model splits images into train, val, and test, and standardizes its features.
 - `smoke-test` forces the mock detector and dataset, and `run` refuses them.
 - Detections claim ground-truth boxes one-to-one in confidence order.
-- Config keys that nothing read were removed, and the rest now act.
+- Removed config keys that nothing read.
+- Config values are checked against the allowed names, and unusable values stop the run.
+- Detections on a crowd region are left out of the correctness labels, as mAP ignores them.
+- Rows are labeled `is_mock` when samples or a detector are passed in directly.
 
 ### Fixed
 
 - PyTorch is seeded by `seed_everything`.
 - TTA detections are mapped back to the original frame.
-- The ruff exclude no longer hides `src/sevs`.
-- `requirements.txt` no longer installs an old copy of this repo.
+- Ruff lints `src/sevs`.
+- `requirements.txt` no longer installs a stale copy of this repo.
+- mAP orders images numerically, so tied scores match pycocotools.
+- Abstention works when error detection is switched off.
 - `roc_auc` now counts tied scores as half.
 - TTA `scale_*` names changed nothing and `brightness_0.8` brightened the image.
 - The CLI failed on import because two geometry helpers were missing.

@@ -57,7 +57,7 @@ Copy `configs/eval/eval_real_torchvision_coco.yaml` and set:
 
 ## Notes
 
-- The detection evaluator reimplements COCOeval so it does not depend on `pycocotools` at run time. `pycocotools` is needed to read COCO annotations, and the tests compare against it.
+- mAP is computed in `detection_eval.py`, not by calling `pycocotools`. `pycocotools` is still required to read COCO annotations, and the tests use it as the reference.
 - Config files are checked against `src/sevs/utils/config_schema.py`, and unknown keys are an error.
 - For laptop inference, `ssdlite320_mobilenet_v3_large` is the lightest torchvision option in this repo.
 

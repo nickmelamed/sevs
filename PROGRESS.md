@@ -19,22 +19,12 @@ Current phase and what is left. Updated at the end of each phase.
 ## Done
 
 - [x] Phases 0 to 5: assessment, spec, agent tooling, style cleanup, tests, first pull request (merged).
-- [x] Reliability phase:
-  - seeded PyTorch
-  - separated mock runs from real ones and added `is_mock`
-  - split the meta-model by image into train, val, and test, and standardized its features
-  - labeled detections one-to-one in confidence order
-  - mapped TTA detections back to the original frame
-  - made mAP follow COCOeval, checked against pycocotools
-  - made every config key act or removed it, and rejected unknown keys
-  - returned COCO crowd regions, and dropped absolute paths from manifests
-  - enabled the CI project-checks step
-  - fixed the ruff exclude that had kept `src/sevs` out of the lint check
-- [x] Mutation testing on `utils/` and `evaluation/`: 902 mutants killed and 13 survived. All 13 are now killed by new tests. 379 mutants crashed in mutmut's forked workers and have no verdict.
+- [x] Reliability phase: see the Unreleased section of CHANGELOG.md.
+- [x] Mutation testing on `utils/` and `evaluation/`: 902 mutants killed and 13 survived. New tests kill all 13. 379 mutants crashed in mutmut's forked workers and have no verdict.
 
 ## Open questions for the owner
 
-- The repo root holds a 1.1 GB virtualenv named `sevs/`. It is gitignored. A virtualenv cannot be moved, so renaming it to `.venv` means creating a new one and deleting this one. Do you want that?
+- Rename the 1.1 GB `sevs/` virtualenv in the repo root to `.venv`? It is gitignored. This needs a new virtualenv, since they cannot be moved.
 - The geometry helpers follow an assumed signature (SPEC 6.1).
 - TTA numbers from before this work are not comparable to later ones, since the augmentations and box mapping changed.
 - The `release` skill came with the installer and nothing uses it yet.

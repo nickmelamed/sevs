@@ -18,13 +18,13 @@ These make a reported result wrong or dishonest if violated. [confirmed] unless 
 
 ## 3. Pipeline (what the code does)
 
-Entry point: `python -m sevs.cli {smoke-test,run} --config <yaml>` (`src/sevs/cli.py`, `run_pipeline`). `smoke-test` forces the mock detector and dataset and writes to a `*_smoke` directory. `run` refuses a config that uses either. Unknown config keys are rejected. [inferred]
+Entry point: `python -m sevs.cli {smoke-test,run} --config <yaml>` (`src/sevs/cli.py`, `run_pipeline`). `smoke-test` forces the mock detector and dataset and writes to a `*_smoke` directory. `run` refuses a config that uses either. `run_pipeline` rejects unknown config keys and unusable values. A row is labeled `is_mock` when the config is mock or when samples or a detector were passed in directly. [inferred]
 
 For each image:
 1. The detector predicts boxes, classes, and confidences. Predictions are filtered by `conf_threshold` and `dataset.class_filter`, passed through class-wise NMS at `nms_iou_threshold`, and capped at `max_detections_per_image`.
 2. Each configured perturbation (hflip, gaussian_blur, brightness, contrast, jpeg_compress, random_crop) is applied and the detector re-run. Boxes from geometric perturbations are mapped back to the original frame.
 3. If TTA is enabled, up to `num_samples` augmented views are generated, the detector is re-run, and boxes are mapped back to the original frame.
-4. Detections are labeled correct or incorrect against ground truth at `match_iou_threshold` with class match required. Detections are visited in confidence order and each ground-truth box is used once.
+4. Detections are labeled correct or incorrect against ground truth at `match_iou_threshold` with class match required. Detections are visited in confidence order and each ground-truth box is used once. An unmatched detection on a crowd region of its class is left out of the labels, as mAP ignores it.
 5. Each detection gets a feature vector: confidence, box area, aspect ratio, entropy of the confidence, TTA confidence std, and five consistency features.
 
 After all images:
@@ -66,14 +66,14 @@ mAP, ECE, Brier, error AUROC and AUPRC, abstention coverage and risk, and mean O
 
 ## 6. Known gaps between intent and code
 
-Found while reading the code. Items 1 to 8 are fixed on `main` or in the open pull request. Items 9 to 11 are open.
+Items 1 to 8 are fixed. Items 9 to 11 are open.
 
-1. [gap, fixed] CLI did not import. `cli.py` imported `area` and `match_detection_to_ground_truth` from `utils/geometry.py`, and neither existed. Both were lost in an unfinished refactor [confirmed]. Assumed behavior: `area(box)` returns the box area, and `match_detection_to_ground_truth(box, cls, gt_boxes, gt_labels, iou_threshold, require_class_match)` returns `(matched, best_iou, gt_index)`, as `cli.py` unpacked it. The pipeline now labels whole images with `assign_detections_to_ground_truth`.
-2. [gap, fixed] Leakage risk (rule 1). The meta-model split was by detection. It is now by image into train, val, and test.
+1. [gap, fixed] CLI did not import. `cli.py` used `area` and `match_detection_to_ground_truth` from `utils/geometry.py`, which did not exist [confirmed]. The restored signature is assumed from how `cli.py` unpacked the result: `(matched, best_iou, gt_index)` [inferred]. The pipeline labels whole images with `assign_detections_to_ground_truth`.
+2. [gap, fixed] Leakage risk (rule 1). Fixed: the meta-model split is by image into train, val, and test.
 3. [gap, fixed] Reproducibility (rule 2). `seed_everything` did not seed PyTorch.
 4. [gap, fixed] Mock labeling (rule 3). `smoke-test` forces mock and `run` refuses it. Every results row has `is_mock`.
-5. [gap, fixed] mAP was VOC-style and ignored crowd flags. It now follows COCOeval and is tested against pycocotools.
-6. [gap, fixed] Config keys that did nothing. Keys that are implemented now act, and the rest were removed. Unknown keys are rejected.
+5. [gap, fixed] Fixed: mAP follows COCOeval and is tested against pycocotools.
+6. [gap, fixed] Config keys that did nothing. Fixed: implemented keys act, the rest were removed, and unknown keys and unusable values are rejected.
 7. [gap, fixed] TTA augmentation mapping. `scale_*` was a no-op, `brightness_0.8` brightened, and TTA boxes were not mapped back.
 8. [gap, fixed] `roc_auc` ignored ties.
 9. [gap] The files in `configs/dataset`, `configs/model`, and `configs/probes` are not loaded by anything.
