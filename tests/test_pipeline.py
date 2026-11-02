@@ -67,3 +67,7 @@ def test_synthetic_run_produces_a_meta_auroc(cfg):
     row = run_pipeline(cfg, samples=make_samples(), detector=JitterDetector(1))
     assert row["n_images"] == 40 and row["n_detections"] == 160
     assert 0.0 <= row["meta_error_auroc"] <= 1.0
+    assert 0.0 <= row["meta_error_auprc"] <= 1.0
+    assert row["n_train_images"] + row["n_val_images"] + row["n_test_images"] == 40
+    assert row["n_train_images"] == 28
+    assert 0.0 <= row["abstain_coverage_0.5"] <= 1.0

@@ -5,17 +5,16 @@ import copy
 from typing import Any, Dict, List, Tuple
 
 import numpy as np
-from sklearn.model_selection import train_test_split
 
 from sevs.datasets.registry import get_dataset
 from sevs.evaluation.calibration_eval import evaluate_calibration
 from sevs.evaluation.detection_eval import evaluate_detection_predictions
-from sevs.evaluation.error_eval import evaluate_error_detection
+from sevs.evaluation.error_eval import abstention_tradeoff
 from sevs.evaluation.ood_eval import summarize_ood_scores
 from sevs.evaluation.report import save_reliability_diagram, save_results_table
 from sevs.logging import get_logger
 from sevs.models.detector import Detection, build_detector
-from sevs.models.meta_error import build_meta_model
+from sevs.models.meta_error import fit_and_score_by_image
 from sevs.models.uncertainty import entropy_from_conf, tta_confidence_std
 from sevs.probes.consistency import summarize_consistency
 from sevs.probes.perturbations import apply_perturbation_with_inverse
@@ -104,6 +103,7 @@ def run_pipeline(cfg: Dict[str, Any], samples: Any = None, detector: Any = None)
     calibration_prob: List[float] = []
     X_rows: List[List[float]] = []
     y_incorrect: List[int] = []
+    det_image_ids: List[str] = []
     prediction_records: List[tuple[str, List[Detection]]] = []
     gt_records: List[tuple[str, np.ndarray, np.ndarray]] = []
     ood_detections: List[List[Detection]] = []
@@ -172,6 +172,7 @@ def run_pipeline(cfg: Dict[str, Any], samples: Any = None, detector: Any = None)
 
             X_rows.append([float(feats.get(k, 0.0)) for k in feature_names])
             y_incorrect.append(1 - is_correct)
+            det_image_ids.append(str(image_id))
             calibration_true.append(is_correct)
             calibration_prob.append(float(d.conf))
 
@@ -186,18 +187,27 @@ def run_pipeline(cfg: Dict[str, Any], samples: Any = None, detector: Any = None)
         row["ece_conf"] = float("nan")
         row["brier_conf"] = float("nan")
 
-    if X_rows and len(set(y_incorrect)) > 1:
-        X = np.array(X_rows, dtype=float)
-        y_inc = np.array(y_incorrect, dtype=int)
-        meta = build_meta_model(cfg["meta_error_predictor"], feature_names)
-        indices = np.arange(len(y_inc))
-        train_idx, test_idx = train_test_split(indices, test_size=1 - float(cfg["meta_error_predictor"]["training"].get("train_ratio", 0.7)), random_state=seed, stratify=y_inc)
-        meta.fit(X[train_idx], y_inc[train_idx])
-        p_inc = meta.predict_proba(X[test_idx])
-        err = evaluate_error_detection(y_inc[test_idx], p_inc)
-        row["meta_error_auroc"] = err.auroc
-    else:
-        row["meta_error_auroc"] = float("nan")
+    nan = float("nan")
+    row.update(meta_error_auroc=nan, meta_error_auprc=nan, meta_error_auroc_val=nan, meta_error_auprc_val=nan)
+    if X_rows:
+        scores = fit_and_score_by_image(
+            np.array(X_rows, dtype=float),
+            np.array(y_incorrect, dtype=int),
+            det_image_ids,
+            cfg["meta_error_predictor"],
+            feature_names,
+            seed,
+        )
+        row["meta_error_auroc"] = scores.test.auroc
+        row["meta_error_auprc"] = scores.test.auprc
+        row["meta_error_auroc_val"] = scores.val.auroc
+        row["meta_error_auprc_val"] = scores.val.auprc
+        row.update({f"n_{k}_images": len(v) for k, v in scores.images.items()})
+        abstention = cfg.get("evaluation", {}).get("abstention", {})
+        if abstention.get("enabled", False) and len(scores.y_test):
+            for t, coverage, risk in abstention_tradeoff(scores.y_test, scores.p_test, abstention["thresholds"]):
+                row[f"abstain_coverage_{t}"] = coverage
+                row[f"abstain_risk_{t}"] = risk
 
     if cfg.get("evaluation", {}).get("detection", {}).get("enabled", False):
         det_eval = evaluate_detection_predictions(prediction_records, gt_records)
