@@ -1,3 +1,0 @@
-name: coco
-split: val
-subset_manifest: data/splits/coco_val_small.json

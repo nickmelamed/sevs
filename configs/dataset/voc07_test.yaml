@@ -1,3 +1,0 @@
-name: voc
-split: test
-subset_manifest: data/splits/voc07_test.json

@@ -1,4 +1,0 @@
-family: torchvision
-variant: fasterrcnn_resnet50_fpn_v2
-weights: DEFAULT
-conf_threshold: 0.05
