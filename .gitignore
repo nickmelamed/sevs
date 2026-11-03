@@ -10,7 +10,6 @@ reports/figures/
 *.pth
 *.onnx
 .ipynb_checkpoints/
-/sevs/
 *.egg-info/
 
 # Claude Code agent tooling

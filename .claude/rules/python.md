@@ -14,5 +14,5 @@ paths:
   definition in one place.
 - The linter does not enforce a docstring convention, so follow
   writing-style.md.
-- Run tools from the `sevs/` virtualenv. It has NumPy 2, pytest, ruff, and
+- Run tools from the `.venv/` virtualenv. It has NumPy 2, pytest, ruff, and
   mypy.

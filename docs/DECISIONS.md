@@ -32,8 +32,8 @@ Confidence is treated as the probability of being correct. This is not class-dis
 ## D10. Config-driven runs, one results row per run
 Everything is set in YAML under `configs/`, and a run writes `results_table.csv` plus the reliability diagram to `results/runs/<name>/`, which is gitignored.
 
-## D11. `src/` layout with a local virtualenv named `sevs/`
-The package lives in `src/sevs`. The virtualenv sits in the repo root as `sevs/` and is ignored by `/sevs/`. Why [guess]: created by default naming, not a design choice. 
+## D11. `src/` layout with a virtualenv in `.venv/`
+The package lives in `src/sevs`. The virtualenv is `.venv/` in the repo root and is ignored by git.
 
 ## D12. Labels give each ground-truth box to one detection
 `assign_detections_to_ground_truth` visits detections from highest to lowest confidence, and each takes the unmatched ground-truth box with the highest IoU. Duplicate detections of one object are incorrect. This matches how mAP counts them. A detection that stays unmatched but lies on a crowd region of its class (overlap over its own area at least `match_iou_threshold`) is left out of the calibration and meta-model rows, because mAP ignores it too. Labeling always requires a class match. `probes.matching.class_match_required` only affects probe matching. `match_detection_to_ground_truth` still matches one detection on its own.

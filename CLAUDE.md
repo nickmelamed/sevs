@@ -40,7 +40,7 @@ make typecheck    # mypy
 make agent-check  # the fast checks the Stop hook runs
 ```
 
-Use the repo's virtualenv, `sevs/` in the root (ignored by git). It has the
+Use the repo's virtualenv, `.venv/` in the root (ignored by git). It has the
 NumPy 2 that `requirements.txt` pins, plus pytest, ruff, and mypy. Other
 environments may have NumPy 1 and give different results.
 

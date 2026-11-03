@@ -66,7 +66,7 @@ mAP, ECE, Brier, error AUROC and AUPRC, abstention coverage and risk, and mean O
 
 ## 6. Known gaps between intent and code
 
-Items 1 to 8 are fixed. Items 9 to 11 are open.
+Items 1 to 8 are fixed. Items 9 and 10 are open.
 
 1. [gap, fixed] CLI did not import. `cli.py` used `area` and `match_detection_to_ground_truth` from `utils/geometry.py`, which did not exist [confirmed]. The restored signature is assumed from how `cli.py` unpacked the result: `(matched, best_iou, gt_index)` [inferred]. The pipeline labels whole images with `assign_detections_to_ground_truth`.
 2. [gap, fixed] Leakage risk (rule 1). Fixed: the meta-model split is by image into train, val, and test.
@@ -76,9 +76,8 @@ Items 1 to 8 are fixed. Items 9 to 11 are open.
 6. [gap, fixed] Config keys that did nothing. Fixed: implemented keys act, the rest were removed, and unknown keys and unusable values are rejected.
 7. [gap, fixed] TTA augmentation mapping. `scale_*` was a no-op, `brightness_0.8` brightened, and TTA boxes were not mapped back.
 8. [gap, fixed] `roc_auc` ignored ties.
-9. [gap] The files in `configs/dataset`, `configs/model`, and `configs/probes` are not loaded by anything.
-10. [gap] The TTA view set always includes the unmodified image first, so `num_samples` counts it.
-11. [gap] No code computes OOD AUROC, because the repo has no labeled OOD data.
+9. [gap] The TTA view set always includes the unmodified image first, so `num_samples` counts it.
+10. [gap] No code computes OOD AUROC, because the repo has no labeled OOD data.
 
 ## 7. Fast checks
 
